@@ -41,9 +41,12 @@
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
+        "resizable": false,
         "visible": false,
         "skipTaskbar": true,
-        "url": "info-panel.html"
+        "url": "info-panel.html",
+        "backgroundColor": "#00000000",
+        "shadow": false
       }
     ],
     "withGlobalTauri": true,
