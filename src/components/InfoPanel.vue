@@ -15,6 +15,40 @@ const timePercent = computed(() => usageData.value.time_percent ?? 0)
 const tokensPercent = computed(() => usageData.value.tokens_percent ?? 0)
 const timeRemaining = computed(() => usageData.value.time_remaining)
 
+// 会员等级
+const membershipLevel = computed(() => {
+  const level = usageData.value.level || 'lite'
+  const levelMap: Record<string, string> = {
+    lite: '轻量版',
+    standard: '标准版',
+    premium: '高级版',
+    enterprise: '企业版'
+  }
+  return levelMap[level] || level
+})
+
+// 格式化重置时间
+function formatResetTime(timestamp?: number): string {
+  if (!timestamp) return '--'
+  const date = new Date(timestamp)
+  const now = new Date()
+  const diff = timestamp - now.getTime()
+
+  // 如果是今天，显示时间
+  // 如果是明天或更晚，显示日期和时间
+  if (diff > 0 && diff < 86400000) {
+    return date.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  } else {
+    return date.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  }
+}
+
+const timeResetTime = computed(() => formatResetTime(usageData.value.time_reset_time))
+const tokensResetTime = computed(() => formatResetTime(usageData.value.tokens_reset_time))
+
+// 工具使用详情
+const usageDetails = computed(() => usageData.value.usage_details || [])
+
 // 心语映射
 const heartMessages: Record<string, string> = {
   Fresh:   '新的一天，能量满格！冲冲冲！',
@@ -70,218 +104,383 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="info-panel" :class="`panel-${petState.toLowerCase()}`">
-    <div class="panel-header">
-      <span class="panel-title">📊 用量详情</span>
-      <button class="panel-close" @click="closeWindow">×</button>
+  <div class="info-panel rpg-panel" :class="`panel-${petState.toLowerCase()}`">
+    <!-- RPG 风格边框装饰 -->
+    <div class="rpg-border-tl"></div>
+    <div class="rpg-border-tr"></div>
+    <div class="rpg-border-bl"></div>
+    <div class="rpg-border-br"></div>
+
+    <!-- 标题栏 -->
+    <div class="rpg-header">
+      <span class="rpg-title">STATUS MENU</span>
+      <button class="rpg-close" @click="closeWindow">[X]</button>
     </div>
 
-    <div class="panel-content">
-      <!-- 状态心语 -->
-      <div class="panel-section">
-        <div class="section-label">💭 状态</div>
-        <div class="heart-text-large">{{ heartMsg }}</div>
+    <div class="rpg-content">
+      <!-- 玩家等级卡片 -->
+      <div class="rpg-card level-card">
+        <div class="rpg-label">MEMBER</div>
+        <div class="rpg-level">{{ membershipLevel }}</div>
       </div>
 
-      <!-- 月度额度 -->
-      <div class="panel-section">
-        <div class="section-label">🗓️ 月度额度</div>
-        <div class="metric-row">
-          <div class="metric-info">
-            <span class="metric-percent">{{ timePercent }}%</span>
-            <span class="metric-remaining">剩余 {{ timeRemaining }} 次</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill" :class="`progress-${petState.toLowerCase()}`" :style="{ width: timePercent + '%' }"></div>
+      <!-- 状态消息卡片 -->
+      <div class="rpg-card status-card">
+        <div class="rpg-label">MESSAGE</div>
+        <div class="rpg-message">{{ heartMsg }}</div>
+      </div>
+
+      <!-- 5小时额度卡片 -->
+      <div class="rpg-card">
+        <div class="rpg-label">5H TOKENS</div>
+        <div class="rpg-stats">
+          <span class="rpg-value">{{ tokensPercent }}%</span>
+          <span class="rpg-remain">REM: {{ 100 - tokensPercent }}%</span>
+        </div>
+        <div class="rpg-bar-container">
+          <div class="rpg-bar">
+            <div class="rpg-bar-fill" :style="{ width: tokensPercent + '%' }"></div>
           </div>
         </div>
+        <div class="rpg-reset">RESET: {{ tokensResetTime }}</div>
       </div>
 
-      <!-- 5小时额度 -->
-      <div class="panel-section">
-        <div class="section-label">⏱️ 5小时额度</div>
-        <div class="metric-row">
-          <div class="metric-info">
-            <span class="metric-percent">{{ tokensPercent }}%</span>
-            <span class="metric-remaining">剩余 {{ 100 - tokensPercent }}%</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill progress-tokens" :style="{ width: tokensPercent + '%' }"></div>
+      <!-- 月度额度卡片 -->
+      <div class="rpg-card">
+        <div class="rpg-label">MONTHLY</div>
+        <div class="rpg-stats">
+          <span class="rpg-value">{{ timePercent }}%</span>
+          <span class="rpg-remain">REM: {{ timeRemaining }}</span>
+        </div>
+        <div class="rpg-bar-container">
+          <div class="rpg-bar">
+            <div class="rpg-bar-fill" :class="`fill-${petState.toLowerCase()}`" :style="{ width: timePercent + '%' }"></div>
           </div>
         </div>
+        <div class="rpg-reset">RESET: {{ timeResetTime }}</div>
       </div>
 
-      <!-- 最后更新时间 -->
-      <div class="panel-section">
-        <div class="section-label">🔄 最后更新</div>
-        <div class="update-time">{{ lastUpdateTime || '加载中...' }}</div>
-      </div>
-
-      <!-- 错误提示 -->
-      <div v-if="fetchError" class="panel-section">
-        <div class="error-message">⚠ {{ fetchError }}</div>
+      <!-- 工具详情卡片 -->
+      <div class="rpg-card" v-if="usageDetails.length > 0">
+        <div class="rpg-label">TOOLS</div>
+        <div class="rpg-items">
+          <div v-for="detail in usageDetails" :key="detail.model_code" class="rpg-item">
+            <span class="item-icon">►</span>
+            <span class="item-name">{{ detail.model_code }}</span>
+            <span class="item-count">x{{ detail.usage }}</span>
+          </div>
+        </div>
       </div>
 
       <!-- 刷新按钮 -->
-      <button class="refresh-btn" @click="refreshUsageData" :disabled="isRefreshing">
-        {{ isRefreshing ? '刷新中...' : '🔄 刷新' }}
+      <button class="rpg-button" @click="refreshUsageData" :disabled="isRefreshing">
+        <span v-if="isRefreshing">...</span>
+        <span v-else>[REFRESH]</span>
       </button>
+
+      <!-- 最后更新 -->
+      <div class="rpg-footer">UPDATED: {{ lastUpdateTime || 'LOADING...' }}</div>
+
+      <!-- 错误提示 -->
+      <div v-if="fetchError" class="rpg-error">
+        ! ERROR: {{ fetchError }}
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.info-panel {
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+/* ── RPG 面板容器 ── */
+.info-panel.rpg-panel {
   width: 100vw;
   height: 100vh;
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(10px);
+  background: #1a1a2e;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.1) 2px, rgba(0, 0, 0, 0.1) 4px),
+    repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0, 0, 0, 0.1) 2px, rgba(0, 0, 0, 0.1) 4px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: 'Press Start 2P', monospace;
+  position: relative;
+  color: #e0e0e0;
 }
 
-.panel-header {
+/* ── 金色边框装饰 ── */
+.rpg-border-tl,
+.rpg-border-tr,
+.rpg-border-bl,
+.rpg-border-br {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ffd700;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.rpg-border-tl { top: 6px; left: 6px; border-right: none; border-bottom: none; }
+.rpg-border-tr { top: 6px; right: 6px; border-left: none; border-bottom: none; }
+.rpg-border-bl { bottom: 6px; left: 6px; border-right: none; border-top: none; }
+.rpg-border-br { bottom: 6px; right: 6px; border-left: none; border-top: none; }
+
+/* ── 标题栏 ── */
+.rpg-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
-  background: rgba(30, 41, 59, 0.8);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 16px 8px;
+  background: linear-gradient(180deg, #16213e 0%, #1a1a2e 100%);
+  border-bottom: 2px solid #ffd700;
+  margin: 0 6px;
 }
 
-.panel-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: #E2E8F0;
+.rpg-title {
+  font-size: 11px;
+  color: #ffd700;
+  text-shadow: 1px 1px 0 #000;
+  letter-spacing: 1px;
 }
 
-.panel-close {
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: rgba(239, 68, 68, 0.2);
-  color: #F87171;
-  border-radius: 4px;
+.rpg-close {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: #ff6b6b;
+  background: transparent;
+  border: 2px solid #ff6b6b;
+  padding: 3px 6px;
   cursor: pointer;
-  font-size: 18px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
+  transition: all 0.1s;
 }
 
-.panel-close:hover {
-  background: rgba(239, 68, 68, 0.4);
-  transform: scale(1.1);
+.rpg-close:hover {
+  background: #ff6b6b;
+  color: #fff;
 }
 
-.panel-content {
+/* ── 内容区 ── */
+.rpg-content {
   flex: 1;
-  padding: 14px;
+  padding: 10px 12px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.panel-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.section-label {
-  font-size: 10px;
-  color: #94A3B8;
-  font-weight: 500;
-}
-
-.heart-text-large {
-  font-size: 12px;
-  color: #CBD5E1;
-  line-height: 1.5;
-}
-
-.metric-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.metric-info {
-  display: flex;
-  align-items: center;
   gap: 8px;
 }
 
-.metric-percent {
-  font-size: 16px;
-  font-weight: 700;
-  font-family: ui-monospace, monospace;
+/* ── 卡片样式 ── */
+.rpg-card {
+  background: #0f0f1a;
+  border: 2px solid #4a4e69;
+  padding: 8px 10px;
+  position: relative;
 }
 
-.metric-remaining {
-  font-size: 10px;
-  color: #94A3B8;
+.rpg-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #ffd700, #ffed4a, #ffd700);
 }
 
-.progress-bar {
-  width: 100%;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  overflow: hidden;
+/* ── 标签 ── */
+.rpg-label {
+  font-size: 8px;
+  color: #948a77;
+  margin-bottom: 4px;
+  letter-spacing: 1px;
 }
 
-.progress-fill {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.4s ease;
+/* ── 等级卡片 ── */
+.level-card .rpg-level {
+  font-size: 12px;
+  color: #ffd700;
+  text-shadow: 1px 1px 0 #000;
+  text-align: center;
+  padding: 4px;
+  background: rgba(255, 215, 0, 0.1);
+  border: 2px solid #ffd700;
+  margin-top: 2px;
 }
 
-.progress-fresh { background: linear-gradient(90deg, #10B981, #34D399); }
-.progress-flow { background: linear-gradient(90deg, #3B82F6, #60A5FA); }
-.progress-warning { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
-.progress-panic { background: linear-gradient(90deg, #EF4444, #F87171); }
-.progress-dead { background: linear-gradient(90deg, #6B7280, #9CA3AF); }
-.progress-tokens { background: linear-gradient(90deg, #3B82F6, #60A5FA); }
-
-.update-time {
-  font-size: 10px;
-  color: #64748B;
-  font-family: ui-monospace, monospace;
-}
-
-.error-message {
-  font-size: 10px;
-  color: #F87171;
-  background: rgba(239, 68, 68, 0.1);
-  padding: 6px 8px;
-  border-radius: 4px;
+/* ── 状态消息 ── */
+.status-card .rpg-message {
+  font-size: 8px;
   line-height: 1.4;
+  color: #7dd3fc;
+  font-style: italic;
 }
 
-.refresh-btn {
-  margin-top: auto;
-  padding: 8px 12px;
-  background: rgba(59, 130, 246, 0.2);
-  color: #60A5FA;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  border-radius: 6px;
-  font-size: 11px;
+/* ── 统计数据 ── */
+.rpg-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.rpg-value {
+  font-size: 16px;
+  color: #ffd700;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.rpg-remain {
+  font-size: 8px;
+  color: #7dd3fc;
+}
+
+/* ── 像素进度条 ── */
+.rpg-bar-container {
+  margin: 6px 0 4px;
+}
+
+.rpg-bar {
+  height: 12px;
+  background: #000;
+  border: 2px solid #4a4e69;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.rpg-bar-fill {
+  height: 100%;
+  background: repeating-linear-gradient(
+    90deg,
+    #ffd700 0px,
+    #ffd700 3px,
+    #b8860b 3px,
+    #b8860b 6px
+  );
+  background-size: 6px 100%;
+  transition: width 0.3s steps(1);
+}
+
+.fill-fresh .rpg-bar-fill {
+  background: repeating-linear-gradient(90deg, #10b981 0px, #10b981 3px, #059669 3px, #059669 6px);
+  background-size: 6px 100%;
+}
+
+.fill-flow .rpg-bar-fill {
+  background: repeating-linear-gradient(90deg, #3b82f6 0px, #3b82f6 3px, #2563eb 3px, #2563eb 6px);
+  background-size: 6px 100%;
+}
+
+.fill-warning .rpg-bar-fill {
+  background: repeating-linear-gradient(90deg, #f59e0b 0px, #f59e0b 3px, #d97706 3px, #d97706 6px);
+  background-size: 6px 100%;
+}
+
+.fill-panic .rpg-bar-fill {
+  background: repeating-linear-gradient(90deg, #ef4444 0px, #ef4444 3px, #dc2626 3px, #dc2626 6px);
+  background-size: 6px 100%;
+}
+
+.fill-dead .rpg-bar-fill {
+  background: repeating-linear-gradient(90deg, #6b7280 0px, #6b7280 3px, #4b5563 3px, #4b5563 6px);
+  background-size: 6px 100%;
+}
+
+/* ── 重置时间 ── */
+.rpg-reset {
+  font-size: 7px;
+  color: #948a77;
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* ── 工具列表 ── */
+.rpg-items {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rpg-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: rgba(255, 215, 0, 0.05);
+  border: 1px solid #4a4e69;
+  font-size: 8px;
+}
+
+.item-icon {
+  color: #ffd700;
+}
+
+.item-name {
+  color: #e0e0e0;
+  flex: 1;
+}
+
+.item-count {
+  color: #7dd3fc;
+}
+
+/* ── 刷新按钮 ── */
+.rpg-button {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: #ffd700;
+  background: #16213e;
+  border: 2px solid #ffd700;
+  padding: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.1s;
+  text-shadow: 1px 1px 0 #000;
+  margin-top: 4px;
 }
 
-.refresh-btn:hover:not(:disabled) {
-  background: rgba(59, 130, 246, 0.3);
+.rpg-button:hover:not(:disabled) {
+  background: #ffd700;
+  color: #000;
 }
 
-.refresh-btn:disabled {
-  opacity: 0.6;
+.rpg-button:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ── 底部信息 ── */
+.rpg-footer {
+  font-size: 7px;
+  color: #948a77;
+  text-align: center;
+  padding: 4px;
+  border-top: 1px solid #4a4e69;
+}
+
+/* ── 错误提示 ── */
+.rpg-error {
+  font-size: 8px;
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+  border: 2px solid #ff6b6b;
+  padding: 6px;
+  text-align: center;
+}
+
+/* ── 滚动条 ── */
+.rpg-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.rpg-content::-webkit-scrollbar-track {
+  background: #0f0f1a;
+}
+
+.rpg-content::-webkit-scrollbar-thumb {
+  background: #4a4e69;
+  border: 1px solid #ffd700;
+}
+
+.rpg-content::-webkit-scrollbar-thumb:hover {
+  background: #ffd700;
 }
 </style>

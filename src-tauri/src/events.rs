@@ -16,6 +16,21 @@ pub struct UsageData {
     pub tokens_percent: u32,
     /// 月 MCP 剩余次数
     pub time_remaining: Option<u32>,
+    /// 5h Token 下次重置时间（时间戳，毫秒）
+    pub tokens_reset_time: Option<i64>,
+    /// 月度额度下次重置时间（时间戳，毫秒）
+    pub time_reset_time: Option<i64>,
+    /// 会员等级
+    pub level: String,
+    /// 工具使用详情
+    pub usage_details: Vec<UsageDetailData>,
+}
+
+/// 工具使用详情（用于前端显示）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UsageDetailData {
+    pub model_code: String,
+    pub usage: u32,
 }
 
 impl UsageData {
@@ -39,6 +54,7 @@ pub struct ApiResponse {
 #[derive(Debug, Deserialize)]
 pub struct ApiData {
     pub limits: Vec<LimitItem>,
+    pub level: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -49,4 +65,15 @@ pub struct LimitItem {
     pub usage: Option<u32>,
     pub number: Option<u32>,
     pub remaining: Option<u32>,
+    #[serde(alias = "nextResetTime")]
+    pub next_reset_time: Option<i64>,
+    #[serde(alias = "usageDetails")]
+    pub usage_details: Option<Vec<UsageDetail>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UsageDetail {
+    #[serde(alias = "modelCode")]
+    pub model_code: String,
+    pub usage: u32,
 }

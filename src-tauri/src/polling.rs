@@ -55,16 +55,30 @@ pub async fn fetch_usage() -> Result<UsageData, String> {
 
     let mut time_percent: u32 = 0;
     let mut time_remaining: Option<u32> = None;
+    let mut time_reset_time: Option<i64> = None;
     let mut tokens_percent: u32 = 0;
+    let mut tokens_reset_time: Option<i64> = None;
+    let mut usage_details: Vec<crate::events::UsageDetailData> = Vec::new();
 
     for item in &data.limits {
         match item.limit_type.as_str() {
             "TIME_LIMIT" => {
                 time_percent = item.percentage.unwrap_or(0);
                 time_remaining = item.remaining;
+                time_reset_time = item.next_reset_time;
+                // 提取工具使用详情
+                if let Some(details) = &item.usage_details {
+                    for detail in details {
+                        usage_details.push(crate::events::UsageDetailData {
+                            model_code: detail.model_code.clone(),
+                            usage: detail.usage,
+                        });
+                    }
+                }
             }
             "TOKENS_LIMIT" => {
                 tokens_percent = item.percentage.unwrap_or(0);
+                tokens_reset_time = item.next_reset_time;
             }
             _ => {}
         }
@@ -77,6 +91,10 @@ pub async fn fetch_usage() -> Result<UsageData, String> {
         time_percent,
         tokens_percent,
         time_remaining,
+        tokens_reset_time,
+        time_reset_time,
+        level: data.level,
+        usage_details,
     })
 }
 
@@ -94,7 +112,7 @@ pub async fn start_polling_loop(app: AppHandle) -> Result<(), Box<dyn std::error
     }
 }
 
-async fn emit_usage(app: &AppHandle) {
+pub async fn emit_usage(app: &AppHandle) {
     match fetch_usage().await {
         Ok(data) => {
             if let Err(e) = app.emit(EVENT_USAGE_UPDATE, data) {
