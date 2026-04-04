@@ -1,10 +1,10 @@
 <script setup lang="ts">
-// 根组件 - 后续将添加平台检测和条件渲染
+import PetWidget from './components/PetWidget.vue'
 </script>
 
 <template>
   <div class="app-container">
-    <h1 class="text-2xl font-bold">PlanGuard</h1>
+    <PetWidget />
   </div>
 </template>
 
