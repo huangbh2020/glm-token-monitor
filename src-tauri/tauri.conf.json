@@ -44,7 +44,7 @@
         "resizable": false,
         "visible": false,
         "skipTaskbar": true,
-        "url": "info-panel.html",
+        "url": "src-tauri/info-panel.html",
         "backgroundColor": "#00000000",
         "shadow": false
       }
