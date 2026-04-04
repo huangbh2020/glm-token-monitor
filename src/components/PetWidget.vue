@@ -123,4 +123,58 @@ onMounted(async () => {
   font-weight: 600;
   white-space: nowrap;
 }
+
+/* State animations */
+/* Fresh 呼吸动画 */
+.state-fresh {
+  animation: breathe 2s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+
+/* Flow 敲打动画 */
+.state-flow {
+  animation: type 0.8s ease-in-out infinite;
+}
+
+@keyframes type {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+/* Warning 抖动动画 */
+.state-warning {
+  animation: shake 0.5s ease-in-out infinite;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+/* Panic 冒汗动画 */
+.state-panic {
+  animation: sweat 0.3s ease-in-out infinite;
+}
+
+@keyframes sweat {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.02) rotate(-1deg); }
+  75% { transform: scale(0.98) rotate(1deg); }
+}
+
+/* Dead 灵魂出窍动画 */
+.state-dead {
+  animation: ghost 2s ease-in-out infinite;
+}
+
+@keyframes ghost {
+  0% { transform: translateY(0); opacity: 1; }
+  50% { transform: translateY(-10px); opacity: 0.5; }
+  100% { transform: translateY(0); opacity: 1; }
+}
 </style>
