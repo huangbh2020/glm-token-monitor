@@ -14,8 +14,12 @@
       {
         "title": "",
         "label": "main",
-        "width": 96,
-        "height": 96,
+        "width": 120,
+        "height": 120,
+        "minWidth": 120,
+        "minHeight": 120,
+        "maxWidth": 336,
+        "maxHeight": 120,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
@@ -28,6 +32,18 @@
         "hiddenTitle": true,
         "shadow": false,
         "dragDropEnabled": true
+      },
+      {
+        "label": "info-panel",
+        "title": "用量详情",
+        "width": 280,
+        "height": 320,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "url": "info-panel.html"
       }
     ],
     "withGlobalTauri": true,
