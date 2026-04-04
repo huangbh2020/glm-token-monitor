@@ -142,7 +142,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="pet-widget" :class="`pet-${petState.toLowerCase()}`"
+  <div class="pet-widget" :class="[`pet-${petState.toLowerCase()}`, { expanded: isExpanded }]"
     data-tauri-drag-region
     @mousedown="startDrag"
     @mouseenter="onHoverRefresh"
