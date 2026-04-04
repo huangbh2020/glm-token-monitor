@@ -30,10 +30,18 @@ body {
 
 /* 确保拖动区域工作 */
 [data-tauri-drag-region],
-[-webkit-app-region="drag"],
 [app-region="drag"] {
   -webkit-app-region: drag !important;
   app-region: drag !important;
+}
+
+/* 确保拖动区域的光标样式 */
+[data-tauri-drag-region] {
+  cursor: grab;
+}
+
+[data-tauri-drag-region]:active {
+  cursor: grabbing;
 }
 
 /* 移除所有可能的背景 */

@@ -15,8 +15,12 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="pet-widget" data-tauri-drag-region>
-    <div class="pet-container" :style="{ backgroundColor: stateColor }">
+  <div class="pet-widget">
+    <div
+      class="pet-container"
+      :style="{ backgroundColor: stateColor }"
+      data-tauri-drag-region
+    >
       <div class="pet-face" :class="`state-${petState.toLowerCase()}`">
         <div class="eye left"></div>
         <div class="eye right"></div>
@@ -33,8 +37,6 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  -webkit-app-region: drag;
-  app-region: drag;
   background: transparent !important;
 }
 
@@ -47,8 +49,13 @@ onMounted(async () => {
   justify-content: center;
   transition: background-color 0.4s ease;
   user-select: none;
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
+  -webkit-app-region: drag;
+  app-region: drag;
+  cursor: grab;
+}
+
+.pet-container:active {
+  cursor: grabbing;
 }
 
 .pet-face {
