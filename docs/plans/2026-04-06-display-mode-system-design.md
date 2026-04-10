@@ -19,12 +19,12 @@
 
 ### 1.3 目标状态
 
-支持 5 种展示模式：
-1. **像素气泡** - 当前默认方式
-2. **圆环进度** - 围绕宠物的环形进度条
-3. **呼吸灯效** - 宠物周围的光晕脉动效果
-4. **胶囊指示器** - 底部居中的进度条
-5. **头顶数字** - 宠物头顶的表情+数字
+支持 5 种高端定制化展示模式（带有高级像素与赛博美学）：
+1. **全息像素气泡 (holo-bubble)** - 全息悬浮对话框，带扫描线
+2. **赛博能量环 (cyber-ring)** - 内部分段旋转环和外发光进度条
+3. **灵能力场波纹 (aura-field)** - 背景向外扩散的多层波纹
+4. **分段能量核心 (energy-core)** - 底部指示电池，分为多个亮起方格
+5. **悬浮状态标 (status-floater)** - 顶部悬浮面板，带表情和故障颤动字效
 
 ---
 
@@ -35,11 +35,12 @@
 ```typescript
 // src/types/config.ts
 export type DisplayMode =
-  | 'bubble'      // 像素气泡（当前默认）
-  | 'ring'        // 圆环进度
-  | 'breathing'   // 呼吸灯效
-  | 'capsule'     // 胶囊指示器
-  | 'emoji'       // 头顶数字
+  | 'holo-bubble'      // 全息像素气泡 (默认)
+  | 'cyber-ring'       // 赛博能量环
+  | 'aura-field'       // 灵能力场波纹
+  | 'energy-core'      // 能量核心格子
+  | 'status-floater'   // 悬浮状态标
+
 
 export interface DisplayConfig {
   display_mode: DisplayMode

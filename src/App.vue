@@ -26,8 +26,11 @@ const currentComponent = computed(() => {
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
   border: none !important;
   outline: none !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

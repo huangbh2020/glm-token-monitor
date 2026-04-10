@@ -1,13 +1,46 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useUsageState } from '../composables/useUsageState'
 import { useTauriEvents } from '../composables/useTauriEvents'
+import { useDisplayMode } from '../composables/useDisplayMode'
+import { useSettings } from '../composables/useSettings'
+import { usePetAction } from '../composables/usePetAction'
+import type { PetType } from '../types/config'
+import CatGifViewer from './pets/CatGifViewer.vue'
+import DogSit from './pets/DogSit.vue'
+import DogBark from './pets/DogBark.vue'
+import DogWalk from './pets/DogWalk.vue'
+import DogBeg from './pets/DogBeg.vue'
 
+const { displayMode } = useDisplayMode()
+const { loadConfig, setupConfigListener, config, basicConfig } = useSettings()
 const { usageData, setupEventListener } = useTauriEvents()
+
+// 计算是否显示光晕层
+const showGlowEffect = computed(() => basicConfig.value?.enable_glow ?? true)
 const { petState } = useUsageState(
   computed(() => usageData.value.used),
   computed(() => usageData.value.total)
 )
+
+// 宠物动作系统
+const { petType, currentAction, setPetType } = usePetAction()
+
+// 监听配置变化更新宠物
+watch(() => config.value?.pet_config?.selected_pet, (newPet) => {
+  if (newPet && newPet !== petType.value) {
+    console.log(`[PetWidget] Pet config changed to: ${newPet}`)
+    setPetType(newPet as PetType)
+  }
+})
+
+// 宠物组件映射
+const petComponents = {
+  'dog-sit': DogSit,
+  'dog-bark': DogBark,
+  'dog-walk': DogWalk,
+  'dog-beg': DogBeg
+} as const
 
 // 双指标数据
 const timePercent = computed(() => usageData.value.time_percent ?? 0)
@@ -112,17 +145,17 @@ const showQuoteBubble = ref(false)
 let quoteTimer: number | null = null
 
 function setupQuoteTimer() {
-  const triggerQuote = () => {
-    if (!isExpanded.value && !isDragging.value) {
-      showQuoteBubble.value = true
-      setTimeout(() => {
-        showQuoteBubble.value = false
-      }, 5000)
-    }
-  }
+  // const triggerQuote = () => {
+  //   if (!isExpanded.value && !isDragging.value) {
+  //     showQuoteBubble.value = true
+  //     setTimeout(() => {
+  //       showQuoteBubble.value = false
+  //     }, 5000)
+  //   }
+  // }
   
-  setTimeout(triggerQuote, 2500) // 开场2.5秒展示一次
-  quoteTimer = window.setInterval(triggerQuote, 20000) // 20秒轮询
+  // setTimeout(triggerQuote, 2500) // 开场2.5秒展示一次
+  // quoteTimer = window.setInterval(triggerQuote, 20000) // 20秒轮询
 }
 
 // 设置定时刷新数据（每1分钟）
@@ -146,6 +179,22 @@ onMounted(async () => {
   } catch (err) {
     console.error('setupEventListener failed:', err)
   }
+
+  // Load configuration and listen to settings change
+  try {
+    console.log('[DEBUG PetWidget] Initializing config...')
+    await loadConfig()
+    await setupConfigListener()
+    console.log('[DEBUG PetWidget] Config initialized.')
+  } catch (err) {
+    console.error('Config initialized failed:', err)
+  }
+
+  // Debug watcher for displayMode changes
+  const { watch } = await import('vue')
+  watch(displayMode, (newVal) => {
+    console.log('[DEBUG PetWidget] Watcher triggered! displayMode is now:', newVal)
+  }, { immediate: true })
 
   // 强制设置窗口始终置顶，防止失去焦点后被其他窗口遮挡
   try {
@@ -171,239 +220,11 @@ onUnmounted(() => {
     @dblclick.prevent="handleDblClick"
   >
     <!-- 光晕层 -->
-    <!-- <div class="glow-backdrop"></div> -->
+    <div v-if="showGlowEffect" class="glow-backdrop"></div>
 
-    <!-- ===== FRESH: 睡猫 + 咖啡 ===== -->
-    <svg v-if="petState === 'Fresh'" class="pet-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-      <!-- ZZZ 浮动 -->
-      <text class="zzz-a" x="44" y="26" font-size="7" fill="#6EE7B7" font-family="monospace" font-weight="bold">z</text>
-      <text class="zzz-b" x="50" y="19" font-size="9" fill="#6EE7B7" font-family="monospace" font-weight="bold">z</text>
-      <text class="zzz-c" x="57" y="12" font-size="11" fill="#6EE7B7" font-family="monospace" font-weight="bold">Z</text>
-      <!-- 猫身体（蜷缩） -->
-      <ellipse class="cat-breathe" cx="22" cy="55" rx="18" ry="11" fill="#F4A460"/>
-      <!-- 猫头 -->
-      <rect x="6" y="30" width="22" height="18" rx="5" fill="#F4A460"/>
-      <!-- 耳朵左 -->
-      <polygon points="8,31 12,22 16,31" fill="#F4A460"/>
-      <polygon points="9,30 12,24 15,30" fill="#FFB6C1"/>
-      <!-- 耳朵右 -->
-      <polygon points="18,31 22,22 26,31" fill="#F4A460"/>
-      <polygon points="19,30 22,24 25,30" fill="#FFB6C1"/>
-      <!-- 闭眼（睡觉弧线） -->
-      <path d="M9 38 Q13 35.5 17 38" stroke="#6B4226" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-      <path d="M19 38 Q23 35.5 27 38" stroke="#6B4226" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-      <!-- 鼻子 -->
-      <polygon points="17,42 19,43 21,42 19,44" fill="#FF9AA2"/>
-      <!-- 胡须左 -->
-      <line x1="3" y1="40" x2="13" y2="42" stroke="#BBB" stroke-width="0.8"/>
-      <line x1="3" y1="43" x2="13" y2="43" stroke="#BBB" stroke-width="0.8"/>
-      <!-- 胡须右 -->
-      <line x1="24" y1="42" x2="34" y2="40" stroke="#BBB" stroke-width="0.8"/>
-      <line x1="24" y1="43" x2="34" y2="43" stroke="#BBB" stroke-width="0.8"/>
-      <!-- 尾巴 -->
-      <path d="M40 54 Q52 48 48 38 Q44 30 40 36" stroke="#F4A460" stroke-width="5" fill="none" stroke-linecap="round"/>
-      <!-- 咖啡杯 -->
-      <rect x="53" y="46" width="20" height="22" rx="3" fill="#6B3A2A"/>
-      <rect x="55" y="48" width="16" height="18" rx="2" fill="#3D1A0A"/>
-      <!-- 杯把 -->
-      <path d="M73 50 Q80 54 73 62" stroke="#6B3A2A" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-      <!-- 咖啡液面 -->
-      <ellipse cx="63" cy="48" rx="8" ry="2.5" fill="#5C2D0E"/>
-      <!-- 热气 -->
-      <path class="steam-a" d="M58 46 Q56 41 58 36" stroke="#A7F3D0" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-      <path class="steam-b" d="M63 44 Q61 39 63 34" stroke="#A7F3D0" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-      <path class="steam-c" d="M68 46 Q66 41 68 36" stroke="#A7F3D0" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-    </svg>
-
-    <!-- ===== FLOW: 戴眼镜猫 + 电脑疯狂敲键盘 ===== -->
-    <svg v-else-if="petState === 'Flow'" class="pet-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-      <!-- TODO 气泡 -->
-      <g class="todo-bubble">
-        <rect x="30" y="4" width="34" height="13" rx="6" fill="#1D4ED8"/>
-        <polygon points="34,17 38,17 36,21" fill="#1D4ED8"/>
-        <text x="33" y="14" font-size="5.5" fill="white" font-family="monospace">// TODO</text>
-      </g>
-      <!-- 显示器 -->
-      <rect x="40" y="22" width="34" height="26" rx="3" fill="#1E293B"/>
-      <rect x="42" y="24" width="30" height="22" rx="2" fill="#0F172A"/>
-      <!-- 代码行 -->
-      <rect x="44" y="27" width="14" height="2" rx="0.5" fill="#60A5FA"/>
-      <rect x="44" y="31" width="20" height="2" rx="0.5" fill="#34D399"/>
-      <rect x="44" y="35" width="12" height="2" rx="0.5" fill="#A78BFA"/>
-      <rect x="44" y="39" width="18" height="2" rx="0.5" fill="#60A5FA"/>
-      <rect x="44" y="43" width="10" height="2" rx="0.5" fill="#F9A8D4"/>
-      <!-- 光标闪烁 -->
-      <rect class="cursor-blink" x="56" y="43" width="2" height="2.5" fill="#60A5FA"/>
-      <!-- 显示器支架 -->
-      <rect x="54" y="48" width="4" height="5" rx="1" fill="#334155"/>
-      <rect x="49" y="53" width="14" height="2.5" rx="1" fill="#334155"/>
-      <!-- 键盘 -->
-      <rect x="30" y="60" width="44" height="14" rx="2.5" fill="#1E293B"/>
-      <rect x="32" y="62" width="5" height="3.5" rx="0.5" fill="#334155"/>
-      <rect x="38" y="62" width="5" height="3.5" rx="0.5" fill="#334155"/>
-      <rect x="44" y="62" width="5" height="3.5" rx="0.5" fill="#334155"/>
-      <rect x="50" y="62" width="5" height="3.5" rx="0.5" fill="#334155"/>
-      <rect x="56" y="62" width="5" height="3.5" rx="0.5" fill="#334155"/>
-      <rect x="62" y="62" width="6" height="3.5" rx="0.5" fill="#334155"/>
-      <rect x="34" y="67" width="28" height="4" rx="0.5" fill="#334155"/>
-      <!-- 猫身体 -->
-      <rect x="4" y="38" width="28" height="24" rx="6" fill="#F4A460"/>
-      <!-- 猫头 -->
-      <rect x="5" y="18" width="24" height="22" rx="5" fill="#F4A460"/>
-      <!-- 耳朵左 -->
-      <polygon points="7,20 11,10 15,20" fill="#F4A460"/>
-      <polygon points="8,19 11,12 14,19" fill="#FFB6C1"/>
-      <!-- 耳朵右 -->
-      <polygon points="19,20 23,10 27,20" fill="#F4A460"/>
-      <polygon points="20,19 23,12 26,19" fill="#FFB6C1"/>
-      <!-- 像素眼镜框 -->
-      <rect x="6" y="26" width="8" height="6" rx="1.5" fill="none" stroke="#374151" stroke-width="1.5"/>
-      <rect x="16" y="26" width="8" height="6" rx="1.5" fill="none" stroke="#374151" stroke-width="1.5"/>
-      <line x1="14" y1="29" x2="16" y2="29" stroke="#374151" stroke-width="1.5"/>
-      <line x1="6" y1="29" x2="4" y2="29" stroke="#374151" stroke-width="1.5"/>
-      <line x1="24" y1="29" x2="26" y2="29" stroke="#374151" stroke-width="1.5"/>
-      <!-- 专注的眼睛 -->
-      <circle cx="10" cy="29" r="2" fill="#1E293B"/>
-      <circle cx="20" cy="29" r="2" fill="#1E293B"/>
-      <circle cx="10.8" cy="28.2" r="0.7" fill="white"/>
-      <circle cx="20.8" cy="28.2" r="0.7" fill="white"/>
-      <!-- 专注眉毛（平直） -->
-      <line x1="6" y1="25" x2="14" y2="25" stroke="#6B4226" stroke-width="1.2"/>
-      <line x1="16" y1="25" x2="24" y2="25" stroke="#6B4226" stroke-width="1.2"/>
-      <!-- 鼻子 -->
-      <polygon points="15,35 17,36 19,35 17,37" fill="#FF9AA2"/>
-      <!-- 手臂/爪子打字 -->
-      <rect class="arm-l" x="4" y="54" width="11" height="8" rx="4" fill="#E8944A"/>
-      <rect class="arm-r" x="19" y="54" width="11" height="8" rx="4" fill="#E8944A"/>
-    </svg>
-
-    <!-- ===== WARNING: 暴躁猫 + 加速敲击 ===== -->
-    <svg v-else-if="petState === 'Warning'" class="pet-svg warn-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-      <!-- 警告符号 -->
-      <text class="warn-flash" x="62" y="22" font-size="14" fill="#F59E0B" font-family="monospace" font-weight="bold">!</text>
-      <!-- 侧面蒸汽 -->
-      <path class="swarn-a" d="M48 50 Q52 44 48 38" stroke="#FDE68A" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.85"/>
-      <path class="swarn-b" d="M55 48 Q59 42 55 36" stroke="#FDE68A" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.85"/>
-      <path class="swarn-c" d="M62 50 Q66 44 62 38" stroke="#FDE68A" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.85"/>
-      <!-- 猫身 -->
-      <rect x="5" y="38" width="30" height="24" rx="6" fill="#F4A460"/>
-      <!-- 猫头 -->
-      <rect x="5" y="18" width="26" height="22" rx="5" fill="#F4A460"/>
-      <!-- 耳朵（略贴后=愤怒） -->
-      <polygon points="7,20 10,12 14,20" fill="#F4A460"/>
-      <polygon points="8,19 10,14 13,19" fill="#FFB6C1"/>
-      <polygon points="22,20 26,12 30,20" fill="#F4A460"/>
-      <polygon points="23,19 26,14 29,19" fill="#FFB6C1"/>
-      <!-- V形愤怒眉 -->
-      <path d="M7 25 L14 28" stroke="#333" stroke-width="2.2" stroke-linecap="round"/>
-      <path d="M22 28 L29 25" stroke="#333" stroke-width="2.2" stroke-linecap="round"/>
-      <!-- 半眯愤怒眼 -->
-      <rect x="8" y="29" width="7" height="4" rx="2" fill="#1E293B"/>
-      <rect x="22" y="29" width="7" height="4" rx="2" fill="#1E293B"/>
-      <circle cx="11.5" cy="31" r="1.2" fill="#EF4444"/>
-      <circle cx="25.5" cy="31" r="1.2" fill="#EF4444"/>
-      <!-- 鼻子 -->
-      <polygon points="16,35 18,36 20,35 18,37" fill="#FF9AA2"/>
-      <!-- 不爽嘴巴（下撇） -->
-      <path d="M11 40 Q18 37.5 25 40" stroke="#6B4226" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-      <!-- 速线手臂 -->
-      <rect class="warnarm-l" x="3" y="54" width="13" height="8" rx="4" fill="#E8944A"/>
-      <rect class="warnarm-r" x="22" y="54" width="13" height="8" rx="4" fill="#E8944A"/>
-      <!-- 速度线 -->
-      <line x1="0" y1="52" x2="5" y2="55" stroke="#FDE68A" stroke-width="1.3" opacity="0.8"/>
-      <line x1="0" y1="57" x2="4" y2="58" stroke="#FDE68A" stroke-width="1.3" opacity="0.8"/>
-      <line x1="35" y1="52" x2="40" y2="55" stroke="#FDE68A" stroke-width="1.3" opacity="0.8"/>
-      <line x1="35" y1="57" x2="40" y2="58" stroke="#FDE68A" stroke-width="1.3" opacity="0.8"/>
-      <!-- 键盘（橙色按键=疯狂） -->
-      <rect x="6" y="64" width="44" height="13" rx="2" fill="#292524"/>
-      <rect x="8" y="66" width="5" height="3.5" rx="0.5" fill="#F59E0B"/>
-      <rect x="15" y="66" width="5" height="3.5" rx="0.5" fill="#F59E0B"/>
-      <rect x="22" y="66" width="5" height="3.5" rx="0.5" fill="#F59E0B"/>
-      <rect x="29" y="66" width="5" height="3.5" rx="0.5" fill="#F59E0B"/>
-      <rect x="36" y="66" width="5" height="3.5" rx="0.5" fill="#F59E0B"/>
-      <rect x="11" y="71" width="26" height="3.5" rx="0.5" fill="#F59E0B"/>
-    </svg>
-
-    <!-- ===== PANIC: 满头大汗 + 电脑冒烟 + Error ===== -->
-    <svg v-else-if="petState === 'Panic'" class="pet-svg panic-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-      <!-- 浮动Error符号 -->
-      <text class="err-a" x="36" y="14" font-size="8" fill="#F97316" font-family="monospace" font-weight="bold">!</text>
-      <text class="err-b" x="46" y="10" font-size="7" fill="#EF4444" font-family="monospace" font-weight="bold">×</text>
-      <!-- 电脑冒烟 -->
-      <circle class="smoke-a" cx="56" cy="24" r="5" fill="#9CA3AF"/>
-      <circle class="smoke-b" cx="63" cy="20" r="4" fill="#9CA3AF"/>
-      <circle class="smoke-c" cx="69" cy="24" r="5" fill="#9CA3AF"/>
-      <!-- ERROR显示器 -->
-      <rect x="44" y="28" width="30" height="24" rx="3" fill="#1E293B"/>
-      <rect x="46" y="30" width="26" height="20" rx="2" fill="#2D0000"/>
-      <!-- X标志 -->
-      <line x1="50" y1="34" x2="60" y2="42" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
-      <line x1="60" y1="34" x2="50" y2="42" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round"/>
-      <!-- ERROR文字 -->
-      <text x="48" y="46" font-size="5.5" fill="#EF4444" font-family="monospace" font-weight="bold">ERROR!</text>
-      <!-- 支架 -->
-      <rect x="56" y="52" width="4" height="5" rx="1" fill="#374151"/>
-      <rect x="51" y="57" width="14" height="2.5" rx="1" fill="#374151"/>
-      <!-- 汗水 -->
-      <ellipse class="sweat-a" cx="30" cy="16" rx="1.5" ry="2.5" fill="#93C5FD"/>
-      <ellipse class="sweat-b" cx="4" cy="30" rx="1.5" ry="2.5" fill="#93C5FD"/>
-      <!-- 猫耳朵 -->
-      <polygon points="8,18 12,8 16,18" fill="#F4A460"/>
-      <polygon points="9,17 12,10 15,17" fill="#FFB6C1"/>
-      <polygon points="20,18 24,8 28,18" fill="#F4A460"/>
-      <polygon points="21,17 24,10 27,17" fill="#FFB6C1"/>
-      <!-- 猫头 -->
-      <rect x="4" y="16" width="28" height="24" rx="6" fill="#F4A460"/>
-      <!-- 惊恐大眼 -->
-      <circle cx="13" cy="26" r="5" fill="white"/>
-      <circle cx="25" cy="26" r="5" fill="white"/>
-      <circle cx="13" cy="26" r="3" fill="#1E293B"/>
-      <circle cx="25" cy="26" r="3" fill="#1E293B"/>
-      <circle cx="14.5" cy="24.5" r="1.2" fill="white"/>
-      <circle cx="26.5" cy="24.5" r="1.2" fill="white"/>
-      <!-- 惊恐眉（高高扬起） -->
-      <path d="M8 21 Q13 18 18 21" stroke="#6B4226" stroke-width="1.5" fill="none"/>
-      <path d="M20 21 Q25 18 30 21" stroke="#6B4226" stroke-width="1.5" fill="none"/>
-      <!-- 大张的嘴（惊叫O） -->
-      <ellipse cx="18" cy="36" rx="4.5" ry="3.5" fill="#1E293B"/>
-      <ellipse cx="18" cy="36" rx="3" ry="2.2" fill="#EF4444"/>
-      <!-- 猫身 -->
-      <rect x="4" y="38" width="28" height="24" rx="6" fill="#F4A460"/>
-      <!-- 举起的手臂 -->
-      <rect class="parm-l" x="0" y="42" width="8" height="12" rx="4" fill="#E8944A" transform="rotate(-35 4 48)"/>
-      <rect class="parm-r" x="30" y="42" width="8" height="12" rx="4" fill="#E8944A" transform="rotate(35 34 48)"/>
-    </svg>
-
-    <!-- ===== DEAD: 像素幽灵 + 404 ===== -->
-    <svg v-else class="pet-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-      <!-- 404显示器 -->
-      <rect x="36" y="28" width="36" height="28" rx="3" fill="#374151"/>
-      <rect x="38" y="30" width="32" height="24" rx="2" fill="#111827"/>
-      <text x="41" y="46" font-size="12" fill="#4B5563" font-family="monospace" font-weight="bold">404</text>
-      <text x="40" y="52" font-size="5" fill="#374151" font-family="monospace">Not Found</text>
-      <!-- 显示器支架 -->
-      <rect x="51" y="56" width="4" height="5" rx="1" fill="#374151"/>
-      <rect x="46" y="61" width="14" height="2.5" rx="1" fill="#374151"/>
-      <!-- 尘埃颗粒 -->
-      <circle class="dust-a" cx="6" cy="20" r="2" fill="#9CA3AF"/>
-      <circle class="dust-b" cx="33" cy="16" r="1.5" fill="#9CA3AF"/>
-      <circle class="dust-c" cx="4" cy="55" r="1.2" fill="#9CA3AF"/>
-      <circle class="dust-d" cx="34" cy="62" r="2" fill="#9CA3AF"/>
-      <!-- 幽灵身体 -->
-      <g class="ghost-body">
-        <!-- 幽灵主体 -->
-        <path d="M7 66 L7 34 Q7 18 18 18 Q29 18 29 34 L29 66 Q26 61 23 66 Q20 61 18 66 Q16 61 13 66 Q10 61 7 66 Z" fill="#E5E7EB" opacity="0.9"/>
-        <!-- 幽灵大眼睛（空洞） -->
-        <ellipse cx="14" cy="36" rx="3.5" ry="4" fill="#374151"/>
-        <ellipse cx="22" cy="36" rx="3.5" ry="4" fill="#374151"/>
-        <!-- 悲伤小嘴 -->
-        <path d="M13 46 Q18 43 23 46" stroke="#9CA3AF" stroke-width="1.5" fill="none" stroke-linecap="round"/>
-        <!-- 幽灵光泽 -->
-        <ellipse cx="12" cy="26" rx="4" ry="2.5" fill="white" opacity="0.3"/>
-      </g>
-      <!-- 省略号 -->
-      <text x="8" y="76" font-size="8" fill="#4B5563" font-family="monospace">. . .</text>
-    </svg>
+    <!-- 动态宠物动作组件 -->
+    <CatGifViewer v-if="currentAction.startsWith('cat-')" :action="currentAction" :width="100" :height="100" />
+    <component v-else :is="petComponents[currentAction as keyof typeof petComponents]" :key="currentAction" />
 
     <!-- 心语 + 双指标信息面板 -->
     <div class="heart-msg">
@@ -452,9 +273,47 @@ onUnmounted(() => {
       </div>
     </transition>
 
-    <!-- 常驻的 Token 容量像素气泡（置于右上） -->
-    <div class="pixel-bubble token-mode" :class="`bubble-${petState.toLowerCase()}`">
-      5h: <span class="bubble-val">{{ 100 - tokensPercent }}%</span>
+    <!-- 5 种展示模式多态呈现 -->
+    <!-- 1. holo-bubble -->
+    <div v-if="displayMode === 'holo-bubble'" class="holo-bubble token-mode" :class="`state-${petState.toLowerCase()}`">
+      <div class="scanlines"></div>
+      5h: <span class="holo-val">{{ 100 - tokensPercent }}%</span>
+    </div>
+
+    <!-- 2. cyber-ring -->
+    <div v-else-if="displayMode === 'cyber-ring'" class="cyber-ring token-mode" :class="`state-${petState.toLowerCase()}`">
+      <svg viewBox="0 0 100 100" class="cr-svg">
+        <circle class="cr-bg-dashed" cx="50" cy="50" r="46"/>
+        <circle class="cr-progress" cx="50" cy="50" r="42"
+          stroke-dasharray="264"
+          :stroke-dashoffset="264 * (tokensPercent / 100)"
+        />
+      </svg>
+      <div class="cr-center-val">{{ 100 - tokensPercent }}%</div>
+    </div>
+
+    <!-- 3. aura-field -->
+    <div v-else-if="displayMode === 'aura-field'" class="aura-field token-mode" :class="`state-${petState.toLowerCase()}`">
+      <div class="aura-ripple r1"></div>
+      <div class="aura-ripple r2"></div>
+      <div class="aura-ripple r3"></div>
+      <div class="aura-val">{{ 100 - tokensPercent }}%</div>
+    </div>
+
+    <!-- 4. energy-core -->
+    <div v-else-if="displayMode === 'energy-core'" class="energy-core token-mode" :class="`state-${petState.toLowerCase()}`">
+      <div class="ec-grid">
+        <div v-for="i in 16" :key="i" class="ec-pixel" :class="{ on: (100 - tokensPercent) >= (i * 6.25 - 3.125) }"></div>
+      </div>
+      <div class="ec-val">{{ 100 - tokensPercent }}%</div>
+    </div>
+
+    <!-- 5. status-floater -->
+    <div v-else-if="displayMode === 'status-floater'" class="status-floater token-mode" :class="`state-${petState.toLowerCase()}`">
+      <div class="sf-bar-container">
+        <div class="sf-bar-fill" :style="{ height: (100 - tokensPercent) + '%' }"></div>
+      </div>
+      <div class="sf-text">{{ 100 - tokensPercent }}%</div>
     </div>
   </div>
 </template>
@@ -462,8 +321,8 @@ onUnmounted(() => {
 <style scoped>
 /* ── 基础容器 ── */
 .pet-widget {
-  width: 96px;
-  height: 96px;
+  width: 120px;
+  height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -473,6 +332,7 @@ onUnmounted(() => {
   user-select: none;
   pointer-events: auto;
   border-radius: 50%;
+  overflow: hidden;
   -webkit-app-region: drag;
 }
 .pet-widget:active { cursor: pointer; }
@@ -481,48 +341,49 @@ onUnmounted(() => {
 .pet-widget.expanded {
   width: 246px;
   height: 246px;
+  overflow: hidden;
 }
 
 /* ── 光晕层 ── */
 .glow-backdrop {
   position: absolute;
-  inset: 0;
+  inset: 8px;
   border-radius: 50%;
   pointer-events: none;
 }
 
 .pet-fresh .glow-backdrop {
-  background: radial-gradient(circle, rgba(16,185,129,0.22) 0%, transparent 68%);
-  box-shadow: 0 0 22px rgba(16,185,129,0.45), 0 0 44px rgba(16,185,129,0.15);
-  animation: glow-green 2.8s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(16,185,129,0.14) 0%, transparent 68%);
+  box-shadow: 0 0 14px rgba(16,185,129,0.26), 0 0 21px rgba(16,185,129,0.06);
+  animation: glow-green 5s ease-in-out infinite;
 }
 .pet-flow .glow-backdrop {
-  background: radial-gradient(circle, rgba(59,130,246,0.22) 0%, transparent 68%);
-  box-shadow: 0 0 20px rgba(59,130,246,0.4), 0 0 40px rgba(59,130,246,0.15);
-  animation: glow-blue 1.8s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(59,130,246,0.14) 0%, transparent 68%);
+  box-shadow: 0 0 12px rgba(59,130,246,0.22), 0 0 20px rgba(59,130,246,0.06);
+  animation: glow-blue 3s ease-in-out infinite;
 }
 .pet-warning .glow-backdrop {
-  background: radial-gradient(circle, rgba(245,158,11,0.28) 0%, transparent 68%);
-  box-shadow: 0 0 22px rgba(245,158,11,0.55), 0 0 44px rgba(245,158,11,0.2);
-  animation: glow-yellow 0.7s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(245,158,11,0.17) 0%, transparent 68%);
+  box-shadow: 0 0 14px rgba(245,158,11,0.3), 0 0 21px rgba(245,158,11,0.08);
+  animation: glow-yellow 1.2s ease-in-out infinite;
 }
 .pet-panic .glow-backdrop {
-  background: radial-gradient(circle, rgba(239,68,68,0.3) 0%, transparent 68%);
-  box-shadow: 0 0 24px rgba(239,68,68,0.65), 0 0 50px rgba(249,115,22,0.3);
-  animation: glow-panic 0.28s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(239,68,68,0.17) 0%, transparent 68%);
+  box-shadow: 0 0 15px rgba(239,68,68,0.34), 0 0 23px rgba(249,115,22,0.09);
+  animation: glow-panic 0.5s ease-in-out infinite;
 }
 .pet-dead .glow-backdrop {
-  background: radial-gradient(circle, rgba(107,114,128,0.18) 0%, transparent 68%);
-  box-shadow: 0 0 16px rgba(107,114,128,0.3);
-  animation: glow-dead 3.5s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(107,114,128,0.11) 0%, transparent 68%);
+  box-shadow: 0 0 9px rgba(107,114,128,0.15);
+  animation: glow-dead 5s ease-in-out infinite;
 }
 
 @keyframes glow-green {
-  0%,100% { opacity: 0.7; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.06); }
+  0%,100% { opacity: 0.75; transform: scale(1); }
+  50% { opacity: 0.95; transform: scale(1.03); }
 }
 @keyframes glow-blue {
-  0%,100% { opacity: 0.75; }
+  0%,100% { opacity: 0.78; }
   50% { opacity: 1; }
 }
 @keyframes glow-yellow {
@@ -954,4 +815,170 @@ onUnmounted(() => {
   75% { transform: translateX(-1px); }
   100% { transform: translateX(0); }
 }
+
+/* ── Display Modes Base ── */
+.token-mode { z-index: 20; pointer-events: none; transition: opacity 0.3s ease, transform 0.3s ease; }
+.pet-widget.expanded .token-mode { opacity: 0; transform: scale(0.8); }
+
+/* 1. Holo Bubble */
+.holo-bubble {
+  position: absolute; top: 15px; right: 4px;
+  background: rgba(15, 23, 42, 0.85); border: 1px solid #475569;
+  box-shadow: 0 0 6px rgba(0,0,0,0.5), inset 0 0 8px rgba(96,165,250,0.1);
+  padding: 1px 4px; font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 8px; font-weight: 700; color: #94A3B8;
+  border-radius: 3px; overflow: hidden;
+  animation: holo-float 2.5s ease-in-out infinite alternate;
+  display: flex; align-items: center; gap: 2px;
+  z-index: 25;
+}
+.holo-bubble .scanlines {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+  background-size: 100% 4px; opacity: 0.3;
+}
+.holo-bubble .holo-val {
+  text-shadow: 0 0 4px currentColor; font-family: 'Press Start 2P', monospace; font-size: 10px;
+  position: relative; z-index: 2;
+}
+.holo-bubble.state-fresh .holo-val { color: #34D399; }
+.holo-bubble.state-flow .holo-val { color: #60A5FA; }
+.holo-bubble.state-warning .holo-val { color: #FBBF24; }
+.holo-bubble.state-panic .holo-val { color: #F87171; animation: glitch 0.3s infinite; }
+.holo-bubble.state-dead .holo-val { color: #9CA3AF; }
+
+@keyframes holo-float { 
+  from { transform: translateY(0); box-shadow: 0 0 5px rgba(96,165,250,0.2); }
+  to { transform: translateY(-3px); box-shadow: 0 0 12px rgba(96,165,250,0.4); } 
+}
+
+/* 2. Cyber Ring */
+.cyber-ring {
+  position: absolute; inset: 4px; pointer-events: none; z-index: 1;
+}
+.cr-svg {
+  width: 100%; height: 100%; transform: rotate(-90deg); filter: drop-shadow(0 0 3px rgba(0,0,0,0.5));
+}
+.cr-bg-dashed {
+  fill: none; stroke: #334155; stroke-width: 1.5; stroke-dasharray: 3 4;
+  transform-origin: 50px 50px; animation: cr-spin 20s linear infinite;
+}
+.cr-progress {
+  fill: none; stroke-width: 2; stroke-linecap: butt;
+  transition: stroke-dashoffset 0.5s ease, stroke 0.5s ease;
+}
+.state-fresh .cr-progress { stroke: #34D399; filter: drop-shadow(0 0 4px #34D399); }
+.state-flow .cr-progress { stroke: #60A5FA; filter: drop-shadow(0 0 4px #60A5FA); }
+.state-warning .cr-progress { stroke: #FBBF24; filter: drop-shadow(0 0 4px #FBBF24); }
+.state-panic .cr-progress { stroke: #F87171; filter: drop-shadow(0 0 6px #F87171); animation: cr-alarm 1s ease infinite alternate; }
+.state-dead .cr-progress { stroke: #9CA3AF; }
+
+.cr-center-val {
+  position: absolute; bottom: 8px; right: 0px; font-family: 'Press Start 2P', monospace; font-size: 10px; font-weight: bold;
+  background: rgba(15,23,42,0.9); padding: 2px 3px; border-radius: 3px; border: 1px solid #1E293B;
+  z-index: 25;
+}
+.state-fresh .cr-center-val { color: #34D399; }
+.state-flow .cr-center-val { color: #60A5FA; }
+.state-warning .cr-center-val { color: #FBBF24; }
+.state-panic .cr-center-val { color: #F87171; }
+.state-dead .cr-center-val { color: #9CA3AF; }
+
+@keyframes cr-spin { to { transform: rotate(360deg); } }
+@keyframes cr-alarm { from { opacity: 0.6; } to { opacity: 1; stroke-width: 4; } }
+
+/* 3. Aura Field */
+.aura-field {
+  position: absolute; inset: 4px; pointer-events: none; z-index: 0;
+  display: flex; justify-content: center; align-items: center;
+}
+.aura-ripple {
+  position: absolute; border-radius: 50%; opacity: 0;
+  border: 1.5px solid; animation: aura-pulse 3s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+.aura-field .r1 { animation-delay: 0s; }
+.aura-field .r2 { animation-delay: 1s; }
+.aura-field .r3 { animation-delay: 2s; }
+.state-fresh .aura-ripple { border-color: #34D399; }
+.state-flow .aura-ripple { border-color: #60A5FA; }
+.state-warning .aura-ripple { border-color: #FBBF24; animation-duration: 1.5s; }
+.state-panic .aura-ripple { border-color: #F87171; animation-duration: 0.8s; border-width: 2px; }
+.state-dead .aura-ripple { border-color: #6B7280; animation: none; opacity: 0.2; width: 40px; height: 40px; }
+
+.aura-val {
+  position: absolute; bottom: 8px; right: 0px; font-family: 'Press Start 2P', monospace; font-size: 10px;
+  background: rgba(0,0,0,0.8); padding: 2px 3px; border-radius: 2px; border: 1px dashed;
+  z-index: 25;
+}
+.state-fresh .aura-val { color: #34D399; border-color: #34D399; }
+.state-flow .aura-val { color: #60A5FA; border-color: #60A5FA; }
+.state-warning .aura-val { color: #FBBF24; border-color: #FBBF24; }
+.state-panic .aura-val { color: #F87171; border-color: #F87171; }
+.state-dead .aura-val { color: #9CA3AF; border-color: #9CA3AF; }
+
+@keyframes aura-pulse {
+  0% { width: 40px; height: 40px; opacity: 0.8; }
+  100% { width: 100px; height: 100px; opacity: 0; }
+}
+
+/* 4. Energy Core - 像素格网格 */
+.energy-core {
+  position: absolute; bottom: 2px; right: 2px; pointer-events: none; z-index: 15;
+  background: rgba(15,23,42,0.9); padding: 3px; border: 1px solid #334155; border-radius: 2px;
+}
+.ec-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+}
+.ec-pixel {
+  width: 4px; height: 4px; background: #1E293B; transition: all 0.3s;
+}
+.state-fresh .ec-pixel.on { background: #34D399; box-shadow: 0 0 3px #34D399; }
+.state-flow .ec-pixel.on { background: #60A5FA; box-shadow: 0 0 3px #60A5FA; }
+.state-warning .ec-pixel.on { background: #FBBF24; box-shadow: 0 0 3px #FBBF24; }
+.state-panic .ec-pixel.on { background: #F87171; box-shadow: 0 0 4px #F87171; animation: ec-flash 0.5s infinite alternate; }
+.state-dead .ec-pixel.on { background: #6B7280; box-shadow: none; }
+
+.ec-val {
+  position: absolute; top: -20px; right: 0px; font-family: 'Press Start 2P', monospace; font-size: 10px;
+  background: rgba(15,23,42,0.9); padding: 1px 3px; border-radius: 2px; border: 1px solid #1E293B;
+}
+.state-fresh .ec-val { color: #34D399; }
+.state-flow .ec-val { color: #60A5FA; }
+.state-warning .ec-val { color: #FBBF24; }
+.state-panic .ec-val { color: #F87171; }
+.state-dead .ec-val { color: #9CA3AF; }
+
+@keyframes ec-flash { from { opacity: 0.5; } to { opacity: 1; } }
+
+/* 5. Status Floater - 侧边进度条 */
+.status-floater {
+  position: absolute; left: 2px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 15;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.sf-bar-container {
+  width: 6px; height: 50px; background: rgba(30,41,59,0.8); border: 1px solid #475569; border-radius: 2px;
+  overflow: hidden; position: relative;
+}
+.sf-bar-fill {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  transition: height 0.5s ease, background 0.5s ease;
+}
+.state-fresh .sf-bar-fill { background: linear-gradient(to top, #34D399, #6EE7B7); }
+.state-flow .sf-bar-fill { background: linear-gradient(to top, #3B82F6, #60A5FA); }
+.state-warning .sf-bar-fill { background: linear-gradient(to top, #F59E0B, #FBBF24); }
+.state-panic .sf-bar-fill { background: linear-gradient(to top, #EF4444, #F87171); animation: sf-flash 0.8s infinite alternate; }
+.state-dead .sf-bar-fill { background: linear-gradient(to top, #4B5563, #6B7280); }
+
+.sf-text {
+  font-family: 'Press Start 2P', monospace; font-size: 10px; margin-top: 2px;
+  background: rgba(15,23,42,0.9); padding: 1px 2px; border-radius: 2px; border: 1px solid #1E293B;
+  white-space: nowrap;
+}
+.state-fresh .sf-text { color: #34D399; }
+.state-flow .sf-text { color: #60A5FA; }
+.state-warning .sf-text { color: #FBBF24; }
+.state-panic .sf-text { color: #F87171; }
+.state-dead .sf-text { color: #9CA3AF; }
+
+@keyframes sf-flash { from { opacity: 0.7; } to { opacity: 1; } }
 </style>

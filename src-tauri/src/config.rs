@@ -8,6 +8,68 @@ const CONFIG_FILE: &str = "config.json";
 pub struct AppConfig {
     pub api_config: ApiConfig,
     pub polling_config: PollingConfig,
+    #[serde(default)]
+    pub display_config: DisplayConfig,
+    #[serde(default)]
+    pub pet_config: PetConfig,
+    #[serde(default)]
+    pub basic_config: BasicConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DisplayConfig {
+    pub display_mode: String,
+}
+
+impl Default for DisplayConfig {
+    fn default() -> Self {
+        Self {
+            display_mode: "holo-bubble".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PetConfig {
+    pub selected_pet: String,
+    pub action_interval: u64,
+}
+
+impl Default for PetConfig {
+    fn default() -> Self {
+        Self {
+            selected_pet: "cat".to_string(),
+            action_interval: 25,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BasicConfig {
+    #[serde(default = "default_enable_glow")]
+    pub enable_glow: bool,
+    #[serde(default)]
+    pub auto_start: bool,
+    #[serde(default = "default_theme")]
+    pub theme: String,
+}
+
+fn default_enable_glow() -> bool {
+    true
+}
+
+fn default_theme() -> String {
+    "dark".to_string()
+}
+
+impl Default for BasicConfig {
+    fn default() -> Self {
+        Self {
+            enable_glow: true,
+            auto_start: false,
+            theme: "dark".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,6 +134,9 @@ impl Default for AppConfig {
         Self {
             api_config: ApiConfig::default(),
             polling_config: PollingConfig::default(),
+            display_config: DisplayConfig::default(),
+            pet_config: PetConfig::default(),
+            basic_config: BasicConfig::default(),
         }
     }
 }
@@ -135,6 +200,7 @@ pub fn load_config(app: &AppHandle) -> Result<AppConfig, String> {
             struct LegacyAppConfig {
                 pub api_config: LegacyApiConfig,
                 pub polling_config: PollingConfig,
+                pub display_config: Option<DisplayConfig>,
             }
             #[derive(Deserialize)]
             struct LegacyApiConfig {
@@ -153,6 +219,9 @@ pub fn load_config(app: &AppHandle) -> Result<AppConfig, String> {
                             .collect(),
                     },
                     polling_config: legacy_config.polling_config,
+                    display_config: legacy_config.display_config.unwrap_or_default(),
+                    pet_config: PetConfig::default(),
+                    basic_config: BasicConfig::default(),
                 };
                 // 保存迁移后的配置
                 save_config(app, &migrated_config)?;

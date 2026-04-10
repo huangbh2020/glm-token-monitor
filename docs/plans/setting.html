@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#414755",
+                        "primary-fixed-dim": "#adc6ff",
+                        "outline-variant": "#c1c6d7",
+                        "on-secondary-container": "#2d4c83",
+                        "on-primary-fixed-variant": "#004493",
+                        "error-container": "#ffdad6",
+                        "surface": "#f9f9fb",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#a1befd",
+                        "on-primary-fixed": "#001a41",
+                        "tertiary": "#9e3d00",
+                        "surface-bright": "#f9f9fb",
+                        "on-primary-container": "#fefcff",
+                        "tertiary-container": "#c64f00",
+                        "surface-container-high": "#e8e8ea",
+                        "surface-dim": "#d9dadc",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-low": "#f3f3f5",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "on-secondary-fixed": "#001a41",
+                        "inverse-on-surface": "#f0f0f2",
+                        "primary-fixed": "#d8e2ff",
+                        "on-tertiary-fixed-variant": "#7c2e00",
+                        "primary-container": "#0070eb",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "surface-container": "#eeeef0",
+                        "surface-container-highest": "#e2e2e4",
+                        "primary": "#0058bc",
+                        "background": "#f9f9fb",
+                        "on-tertiary-container": "#fffbff",
+                        "inverse-primary": "#adc6ff",
+                        "on-error-container": "#93000a",
+                        "inverse-surface": "#2f3132",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed": "#d8e2ff",
+                        "tertiary-fixed": "#ffdbcc",
+                        "on-surface": "#1a1c1d",
+                        "surface-variant": "#e2e2e4",
+                        "tertiary-fixed-dim": "#ffb595",
+                        "surface-tint": "#005bc1",
+                        "secondary": "#405e96",
+                        "on-tertiary-fixed": "#351000",
+                        "on-background": "#1a1c1d",
+                        "on-secondary-fixed-variant": "#26467d",
+                        "outline": "#717786"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .mac-window {
+            width: 1000px;
+            height: 680px;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            box-shadow: 0 50px 100px rgba(0, 0, 0, 0.2);
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+            vertical-align: middle;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+        }
+    </style>
+</head>
+
+<body class="bg-slate-100">
+    <div class="mac-window bg-white flex shadow-2xl relative">
+        <!-- Sidebar -->
+        <aside
+            class="h-screen w-64 fixed left-0 top-0 bg-slate-50/50 dark:bg-slate-950/50 backdrop-blur-xl flex flex-col p-4 gap-2 z-10">
+            <!-- Mac Controls -->
+            <div class="flex gap-2 mb-6 px-2">
+                <div class="w-3.5 h-3.5 rounded-full bg-[#ff5f57]"></div>
+                <div class="w-3.5 h-3.5 rounded-full bg-[#ffbd2e]"></div>
+                <div class="w-3.5 h-3.5 rounded-full bg-[#28c840]"></div>
+            </div>
+            <div class="mb-4 px-2">
+                <h1 class="text-xl font-bold tracking-tight text-slate-800 dark:text-slate-100">Configuration</h1>
+                <p class="text-xs text-slate-500">V2.4 Atelier</p>
+            </div>
+            <!-- Nav Items -->
+            <nav class="flex flex-col gap-1">
+                <a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/40 dark:hover:bg-slate-800/40 transition-all rounded-lg font-sans text-sm font-medium"
+                    href="#">
+                    <span class="material-symbols-outlined" data-icon="settings">settings</span>
+                    <span>基础设置</span>
+                </a>
+                <a class="flex items-center gap-3 px-3 py-2 bg-white dark:bg-slate-800 shadow-sm text-blue-600 dark:text-blue-400 rounded-lg font-sans text-sm font-medium"
+                    href="#">
+                    <span class="material-symbols-outlined" data-icon="memory">memory</span>
+                    <span>模型配置</span>
+                </a>
+                <a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/40 dark:hover:bg-slate-800/40 transition-all rounded-lg font-sans text-sm font-medium"
+                    href="#">
+                    <span class="material-symbols-outlined" data-icon="sync">sync</span>
+                    <span>轮询设置</span>
+                </a>
+                <a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/40 dark:hover:bg-slate-800/40 transition-all rounded-lg font-sans text-sm font-medium"
+                    href="#">
+                    <span class="material-symbols-outlined" data-icon="pets">pets</span>
+                    <span>宠物</span>
+                </a>
+                <a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/40 dark:hover:bg-slate-800/40 transition-all rounded-lg font-sans text-sm font-medium"
+                    href="#">
+                    <span class="material-symbols-outlined" data-icon="desktop_windows">desktop_windows</span>
+                    <span>展示设置</span>
+                </a>
+            </nav>
+            <div class="mt-auto pt-4 flex flex-col gap-1 border-t border-slate-200/50">
+                <a class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 transition-all text-sm"
+                    href="#">
+                    <span class="material-symbols-outlined" data-icon="contact_support">contact_support</span>
+                    <span>Support</span>
+                </a>
+                <div class="px-2 mt-2">
+                    <button
+                        class="w-full bg-gradient-to-br from-primary to-primary-container text-white py-2 rounded-lg text-xs font-semibold shadow-md active:scale-95 transition-transform">
+                        Upgrade Plan
+                    </button>
+                </div>
+            </div>
+        </aside>
+        <!-- Main Content Area -->
+        <main class="ml-64 flex-1 glass-panel flex flex-col overflow-y-auto">
+            <!-- Header/Breadcrumb -->
+            <header
+                class="sticky top-0 z-20 flex items-center justify-between px-10 py-6 border-b border-white/20 bg-white/30 backdrop-blur-md">
+                <div class="flex items-center gap-2 text-sm text-on-surface-variant font-medium">
+                    <span>Settings</span>
+                    <span class="material-symbols-outlined text-xs">chevron_right</span>
+                    <span class="text-on-surface">模型配置</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span
+                        class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">help</span>
+                    <span
+                        class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">settings</span>
+                    <img alt="User profile" class="w-8 h-8 rounded-full border border-white/40 shadow-sm"
+                        data-alt="Close-up portrait of a professional man with a friendly expression in clean studio lighting on a soft gray background"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuAb9gdz8WFUtmpmoQa0m7BaBPffLV1eOtJzlo099MF95cOFBZpixr4oWYcHe4aBwBZ8MjQLz69LKvUp9WC2cdb85aPJhx7UKqdC3ItMphxev-yfTvfU7Cyh_BV9i1vhyWZbxSOTZrHVhjcSLqhg3goudEx5pPWqbyBmXLxrXIVjacO2D4pCjlViVnKdBsyOsyU2PfCE19L9RaS0CrJP8yTmb1pgyBGtpOvOwYnr39GDPLWndM8I0xsw-2TNDJ_iU8sIQLcWy5phazI" />
+                </div>
+            </header>
+            <div class="px-10 py-8 flex flex-col gap-8 max-w-5xl mx-auto w-full">
+                <!-- Hero Section: Current Model Selection -->
+                <section>
+                    <h2 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-4 px-1">当前模型</h2>
+                    <div
+                        class="surface-container-lowest rounded-2xl p-6 shadow-sm border border-outline-variant/10 flex items-center justify-between bg-white/80">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-primary">
+                                <span class="material-symbols-outlined text-3xl"
+                                    style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-on-surface text-lg">BigModel</h3>
+                                <p class="text-sm text-on-surface-variant">Active Instance • 1.2M Parameters</p>
+                            </div>
+                        </div>
+                        <div class="relative group">
+                            <button
+                                class="flex items-center gap-3 px-4 py-2.5 bg-surface-container-low hover:bg-surface-container-high rounded-xl text-sm font-medium transition-colors border border-outline-variant/10">
+                                <span>Switch Model</span>
+                                <span class="material-symbols-outlined text-sm">unfold_more</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+                <!-- Model List Section -->
+                <section>
+                    <div class="flex items-center justify-between mb-4 px-1">
+                        <h2 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">模型列表</h2>
+                        <button class="text-primary text-xs font-semibold hover:underline">Add New Model</button>
+                    </div>
+                    <div
+                        class="surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/10 overflow-hidden bg-white/60">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-outline-variant/10 bg-slate-50/50">
+                                    <th
+                                        class="px-6 py-4 text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+                                        Status</th>
+                                    <th
+                                        class="px-6 py-4 text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+                                        Model Name</th>
+                                    <th
+                                        class="px-6 py-4 text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+                                        API Key</th>
+                                    <th
+                                        class="px-6 py-4 text-[11px] font-bold text-on-surface-variant uppercase tracking-wider text-right">
+                                        Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-outline-variant/10">
+                                <!-- Row 1 -->
+                                <tr class="hover:bg-slate-100/40 transition-colors group">
+                                    <td class="px-6 py-5">
+                                        <div class="flex items-center gap-2">
+                                            <div
+                                                class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]">
+                                            </div>
+                                            <span class="text-xs text-on-surface-variant">Active</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-5">
+                                        <span class="font-medium text-on-surface">GPT-4-Turbo</span>
+                                    </td>
+                                    <td class="px-6 py-5">
+                                        <div
+                                            class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-lg w-fit">
+                                            <span class="material-symbols-outlined text-sm text-outline">lock</span>
+                                            <span
+                                                class="text-xs font-mono text-on-surface-variant">••••••••••••••••</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-5 text-right">
+                                        <div class="flex items-center justify-end gap-3">
+                                            <button
+                                                class="px-3 py-1 text-xs font-semibold bg-surface-container-highest rounded-lg hover:bg-slate-200 transition-colors">Test</button>
+                                            <div
+                                                class="w-10 h-5 bg-primary rounded-full relative flex items-center px-0.5 cursor-pointer">
+                                                <div class="w-4 h-4 bg-white rounded-full shadow-sm ml-auto"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- Row 2 -->
+                                <tr class="hover:bg-slate-100/40 transition-colors">
+                                    <td class="px-6 py-5">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 rounded-full bg-slate-300"></div>
+                                            <span class="text-xs text-on-surface-variant">Idle</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-5">
+                                        <span class="font-medium text-on-surface">Claude 3 Opus</span>
+                                    </td>
+                                    <td class="px-6 py-5">
+                                        <div
+                                            class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-lg w-fit">
+                                            <span class="material-symbols-outlined text-sm text-outline">lock</span>
+                                            <span
+                                                class="text-xs font-mono text-on-surface-variant">••••••••••••••••</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-5 text-right">
+                                        <div class="flex items-center justify-end gap-3">
+                                            <button
+                                                class="px-3 py-1 text-xs font-semibold bg-surface-container-highest rounded-lg hover:bg-slate-200 transition-colors">Test</button>
+                                            <div
+                                                class="w-10 h-5 bg-slate-300 rounded-full relative flex items-center px-0.5 cursor-pointer">
+                                                <div class="w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <!-- Row 3 -->
+                                <tr class="hover:bg-slate-100/40 transition-colors">
+                                    <td class="px-6 py-5">
+                                        <div class="flex items-center gap-2">
+                                            <div class="w-2 h-2 rounded-full bg-slate-300"></div>
+                                            <span class="text-xs text-on-surface-variant">Offline</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-5">
+                                        <span class="font-medium text-on-surface">Gemini Ultra</span>
+                                    </td>
+                                    <td class="px-6 py-5">
+                                        <div
+                                            class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-lg w-fit">
+                                            <span class="material-symbols-outlined text-sm text-outline">lock</span>
+                                            <span
+                                                class="text-xs font-mono text-on-surface-variant">••••••••••••••••</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-5 text-right">
+                                        <div class="flex items-center justify-end gap-3">
+                                            <button
+                                                class="px-3 py-1 text-xs font-semibold bg-surface-container-highest rounded-lg hover:bg-slate-200 transition-colors">Test</button>
+                                            <div
+                                                class="w-10 h-5 bg-slate-300 rounded-full relative flex items-center px-0.5 cursor-pointer">
+                                                <div class="w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                <!-- Extra Aesthetic Section: Bento Style usage stats -->
+                <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div
+                        class="md:col-span-2 bg-gradient-to-br from-primary/5 to-primary-container/10 p-6 rounded-2xl border border-primary/10">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h4 class="text-sm font-semibold text-primary">System Performance</h4>
+                                <p class="text-xs text-on-surface-variant">Token throughput last 24h</p>
+                            </div>
+                            <span class="material-symbols-outlined text-primary">monitoring</span>
+                        </div>
+                        <div class="flex items-end gap-2 h-20">
+                            <div class="flex-1 bg-primary/20 rounded-t-md h-[40%]"></div>
+                            <div class="flex-1 bg-primary/20 rounded-t-md h-[60%]"></div>
+                            <div class="flex-1 bg-primary/20 rounded-t-md h-[45%]"></div>
+                            <div class="flex-1 bg-primary/20 rounded-t-md h-[70%]"></div>
+                            <div class="flex-1 bg-primary/20 rounded-t-md h-[85%]"></div>
+                            <div class="flex-1 bg-primary/20 rounded-t-md h-[95%]"></div>
+                            <div class="flex-1 bg-primary/40 rounded-t-md h-[80%]"></div>
+                            <div class="flex-1 bg-primary/20 rounded-t-md h-[60%]"></div>
+                            <div class="flex-1 bg-primary/60 rounded-t-md h-[90%]"></div>
+                            <div class="flex-1 bg-primary rounded-t-md h-[100%]"></div>
+                        </div>
+                    </div>
+                    <div
+                        class="surface-container-lowest p-6 rounded-2xl border border-outline-variant/10 shadow-sm flex flex-col justify-between bg-white/80">
+                        <div>
+                            <span class="material-symbols-outlined text-tertiary mb-2">security</span>
+                            <h4 class="text-sm font-semibold text-on-surface">Privacy Level</h4>
+                            <p class="text-xs text-on-surface-variant">Advanced encryption active</p>
+                        </div>
+                        <div class="flex items-center gap-1 mt-4">
+                            <div class="h-1 flex-1 bg-primary rounded-full"></div>
+                            <div class="h-1 flex-1 bg-primary rounded-full"></div>
+                            <div class="h-1 flex-1 bg-primary rounded-full"></div>
+                            <div class="h-1 flex-1 bg-surface-container-highest rounded-full"></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <!-- Decorative background blobs -->
+    <div class="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-400/20 rounded-full blur-[120px] -z-10"></div>
+    <div class="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-400/20 rounded-full blur-[120px] -z-10">
+    </div>
+</body>
+
+</html>
