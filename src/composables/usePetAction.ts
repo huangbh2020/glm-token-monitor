@@ -4,17 +4,20 @@ import type { PetType, CatAction, DogAction } from '../types/config'
 // 动作定义
 const CAT_ACTIONS: CatAction[] = ['cat-sleep', 'cat-play', 'cat-stare', 'cat-stretch']
 const DOG_ACTIONS: DogAction[] = ['dog-sit', 'dog-bark', 'dog-walk', 'dog-beg']
+const SPIRIT_ACTIONS = ['spirit-idle'] // Spirit 只有一个 idle 状态，由 petState 驱动
 
 // 默认配置
 const DEFAULT_ACTION_INTERVAL = 25 // 秒
 
-export function usePetAction(initialPet: PetType = 'cat', interval: number = DEFAULT_ACTION_INTERVAL) {
+export function usePetAction(initialPet: PetType = 'spirit', interval: number = DEFAULT_ACTION_INTERVAL) {
   const petType = ref<PetType>(initialPet)
-  const currentAction = ref<string>(CAT_ACTIONS[0])
+  const currentAction = ref<string>('spirit-idle')
 
   // 获取当前宠物的所有动作
   const availableActions = computed(() => {
-    return petType.value === 'cat' ? CAT_ACTIONS : DOG_ACTIONS
+    if (petType.value === 'cat') return CAT_ACTIONS
+    if (petType.value === 'dog') return DOG_ACTIONS
+    return SPIRIT_ACTIONS
   })
 
   // 随机切换动作
@@ -30,7 +33,10 @@ export function usePetAction(initialPet: PetType = 'cat', interval: number = DEF
     if (petType.value !== type) {
       petType.value = type
       // 切换宠物时立即更新动作
-      const actions = type === 'cat' ? CAT_ACTIONS : DOG_ACTIONS
+      let actions: string[]
+      if (type === 'cat') actions = CAT_ACTIONS
+      else if (type === 'dog') actions = DOG_ACTIONS
+      else actions = SPIRIT_ACTIONS
       currentAction.value = actions[0]
       console.log(`[PetAction] Pet changed to: ${type}`)
     }

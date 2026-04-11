@@ -26,12 +26,12 @@ export interface PollingConfig {
 }
 
 // 宠物类型
-export type PetType = 'cat' | 'dog'
+export type PetType = 'spirit' | 'ghost'
 
-// 猫咪动作
+// 猫咪动作（已废弃，保留以兼容）
 export type CatAction = 'cat-sleep' | 'cat-play' | 'cat-stare' | 'cat-stretch'
 
-// 狗狗动作
+// 狗狗动作（已废弃，保留以兼容）
 export type DogAction = 'dog-sit' | 'dog-bark' | 'dog-walk' | 'dog-beg'
 
 // 宠物配置

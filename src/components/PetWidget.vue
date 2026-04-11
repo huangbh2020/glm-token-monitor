@@ -11,6 +11,8 @@ import DogSit from './pets/DogSit.vue'
 import DogBark from './pets/DogBark.vue'
 import DogWalk from './pets/DogWalk.vue'
 import DogBeg from './pets/DogBeg.vue'
+import JellySpirit from './pets/JellySpirit.vue'
+import PixelGhost from './pets/PixelGhost.vue'
 
 const { displayMode } = useDisplayMode()
 const { loadConfig, setupConfigListener, config, basicConfig } = useSettings()
@@ -223,7 +225,9 @@ onUnmounted(() => {
     <div v-if="showGlowEffect" class="glow-backdrop"></div>
 
     <!-- 动态宠物动作组件 -->
-    <CatGifViewer v-if="currentAction.startsWith('cat-')" :action="currentAction" :width="100" :height="100" />
+    <JellySpirit v-if="petType === 'spirit'" :state="petState" :width="100" :height="100" />
+    <PixelGhost v-else-if="petType === 'ghost'" :state="petState" :width="100" :height="100" />
+    <CatGifViewer v-else-if="currentAction.startsWith('cat-')" :action="currentAction" :width="100" :height="100" />
     <component v-else :is="petComponents[currentAction as keyof typeof petComponents]" :key="currentAction" />
 
     <!-- 心语 + 双指标信息面板 -->
@@ -331,7 +335,7 @@ onUnmounted(() => {
   cursor: pointer;
   user-select: none;
   pointer-events: auto;
-  border-radius: 50%;
+  border-radius: 8px;
   overflow: hidden;
   -webkit-app-region: drag;
 }
@@ -348,7 +352,7 @@ onUnmounted(() => {
 .glow-backdrop {
   position: absolute;
   inset: 8px;
-  border-radius: 50%;
+  border-radius: 8px;
   pointer-events: none;
 }
 
@@ -566,7 +570,7 @@ onUnmounted(() => {
 .heart-msg {
   position: absolute;
   inset: 3px;
-  border-radius: 50%;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;

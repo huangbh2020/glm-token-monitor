@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useSettings } from '../composables/useSettings'
 import { useTheme } from '../composables/useTheme'
 import type { DisplayMode } from '../types/config'
@@ -18,8 +19,6 @@ const {
   testConnection,
   setupConfigListener,
   updatePetType,
-  updateActionInterval,
-  updateEnableGlow,
   updateAutoStart
 } = useSettings()
 
@@ -27,16 +26,39 @@ const { currentTheme, setTheme } = useTheme()
 
 // UI 状态
 const activeTab = ref<'basic' | 'models' | 'pet'>('basic')
+const isDragging = ref(false)
 
 const displayModes: { value: DisplayMode; label: string }[] = [
-  { value: 'holo-bubble', label: 'HOLO-BUBBLE' },
-  { value: 'cyber-ring', label: 'CYBER-RING' },
-  { value: 'aura-field', label: 'AURA-FIELD' },
-  { value: 'energy-core', label: 'ENERGY-CORE' },
-  { value: 'status-floater', label: 'STATUS-FLOATER' }
+  { value: 'holo-bubble', label: '全息气泡' },
+  { value: 'cyber-ring', label: '赛博光环' },
+  { value: 'aura-field', label: '光环力场' },
+  { value: 'energy-core', label: '能量核心' },
+  { value: 'status-floater', label: '状态悬浮' }
 ]
 
 const isTesting = ref(false)
+const editingApiKey = ref<string | null>(null)
+const apiKeyInput = ref('')
+
+// 拖动功能
+async function startDrag(event: MouseEvent) {
+  // 只在点击header时才允许拖动
+  if ((event.target as HTMLElement).closest('.icon-btn')) return
+
+  event.preventDefault()
+  isDragging.value = true
+
+  try {
+    const win = getCurrentWindow()
+    await win.startDragging()
+  } catch (error) {
+    console.error('拖动失败:', error)
+  } finally {
+    setTimeout(() => {
+      isDragging.value = false
+    }, 200)
+  }
+}
 
 // 实时预览监听
 watch(() => config.value?.display_config?.display_mode, async (newMode, oldMode) => {
@@ -51,16 +73,6 @@ watch(() => config.value?.display_config?.display_mode, async (newMode, oldMode)
 
 watch(() => config.value?.pet_config?.selected_pet, async (newPet, oldPet) => {
   if (newPet && newPet !== oldPet) {
-    try {
-      await saveConfig()
-    } catch(e) {
-      console.error('saveConfig failed!', e)
-    }
-  }
-})
-
-watch(() => config.value?.pet_config?.action_interval, async (newInterval, oldInterval) => {
-  if (newInterval !== undefined && newInterval !== oldInterval) {
     try {
       await saveConfig()
     } catch(e) {
@@ -96,6 +108,30 @@ async function handleTestConnection(model: any) {
   }
 }
 
+// 编辑 API Key
+function startEditApiKey(provider: string) {
+  const model = config.value?.api_config.models.find(m => m.provider === provider)
+  if (model) {
+    editingApiKey.value = provider
+    apiKeyInput.value = model.api_key || ''
+  }
+}
+
+// 保存 API Key
+function saveApiKey(provider: string) {
+  updateModelConfig(provider, { api_key: apiKeyInput.value })
+  editingApiKey.value = null
+  apiKeyInput.value = ''
+  // 自动保存配置
+  saveConfig().catch(console.error)
+}
+
+// 取消编辑
+function cancelEditApiKey() {
+  editingApiKey.value = null
+  apiKeyInput.value = ''
+}
+
 // 组件挂载
 let cleanup: (() => void) | undefined
 
@@ -113,14 +149,14 @@ onUnmounted(() => {
 <template>
   <div class="settings-panel" :data-theme="currentTheme">
     <!-- 顶部栏 -->
-    <header class="panel-header">
+    <header class="panel-header" @mousedown="startDrag">
       <div class="header-left">
-        <span class="panel-title">SETTINGS</span>
+        <span class="panel-title">设置</span>
       </div>
       <div class="header-right">
         <button class="icon-btn close" @click="closeWindow">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 6L6 6M6 6l12 12"/>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
           </svg>
         </button>
       </div>
@@ -130,9 +166,9 @@ onUnmounted(() => {
     <nav class="tab-nav">
       <button
         v-for="tab in [
-          { id: 'basic', label: 'BASIC' },
-          { id: 'models', label: 'MODELS' },
-          { id: 'pet', label: 'PET' }
+          { id: 'basic', label: '基础' },
+          { id: 'models', label: '模型' },
+          { id: 'pet', label: '宠物' }
         ]"
         :key="tab.id"
         class="tab-btn"
@@ -150,7 +186,7 @@ onUnmounted(() => {
         <!-- 主题切换 -->
         <div class="setting-item">
           <div class="setting-info">
-            <span class="setting-label">THEME</span>
+            <span class="setting-label">主题</span>
             <span class="setting-desc">选择界面主题</span>
           </div>
           <div class="theme-selector">
@@ -158,36 +194,19 @@ onUnmounted(() => {
               class="theme-btn"
               :class="{ active: currentTheme === 'dark' }"
               @click="setTheme('dark')"
-            >DARK</button>
+            >深色</button>
             <button
               class="theme-btn"
               :class="{ active: currentTheme === 'light' }"
               @click="setTheme('light')"
-            >LIGHT</button>
+            >浅色</button>
           </div>
-        </div>
-
-        <!-- 光晕效果 -->
-        <div class="setting-item">
-          <div class="setting-info">
-            <span class="setting-label">GLOW EFFECT</span>
-            <span class="setting-desc">宠物周围彩色光晕</span>
-          </div>
-          <label class="toggle-switch">
-            <input
-              type="checkbox"
-              :checked="config.basic_config?.enable_glow ?? true"
-              @change="updateEnableGlow(($event.target as HTMLInputElement).checked)"
-            />
-            <span class="toggle-track"></span>
-            <span class="toggle-thumb"></span>
-          </label>
         </div>
 
         <!-- 开机自启 -->
         <div class="setting-item">
           <div class="setting-info">
-            <span class="setting-label">AUTO START</span>
+            <span class="setting-label">开机自启</span>
             <span class="setting-desc">系统启动时自动运行</span>
           </div>
           <label class="toggle-switch">
@@ -207,7 +226,7 @@ onUnmounted(() => {
         <!-- 当前模型 -->
         <div class="setting-item full">
           <div class="setting-info">
-            <span class="setting-label">ACTIVE MODEL</span>
+            <span class="setting-label">当前模型</span>
           </div>
           <div class="model-selector">
             <select
@@ -232,29 +251,56 @@ onUnmounted(() => {
             v-for="model in config.api_config.models"
             :key="model.provider"
             class="model-item"
-            :class="{ active: model.provider === config.api_config.current_model }"
+            :class="{ active: model.provider === config.api_config.current_model, expanded: editingApiKey === model.provider }"
           >
-            <div class="model-info">
-              <span class="model-name">{{ model.name }}</span>
-              <span class="model-provider">{{ model.provider }}</span>
+            <div class="model-main">
+              <div class="model-info">
+                <span class="model-name">{{ model.name }}</span>
+                <span class="model-provider">{{ model.provider }}</span>
+              </div>
+              <div class="model-actions">
+                <button
+                  class="action-btn test"
+                  :disabled="isTesting"
+                  @click="handleTestConnection(model)"
+                >
+                  {{ isTesting ? '...' : '测试' }}
+                </button>
+                <button
+                  class="action-btn edit-key"
+                  @click="startEditApiKey(model.provider)"
+                  v-if="editingApiKey !== model.provider"
+                >
+                  {{ model.api_key ? '修改密钥' : '设置密钥' }}
+                </button>
+                <label class="toggle-switch mini">
+                  <input
+                    type="checkbox"
+                    :checked="model.enabled"
+                    @change="updateModelConfig(model.provider, { enabled: ($event.target as HTMLInputElement).checked })"
+                  />
+                  <span class="toggle-track"></span>
+                  <span class="toggle-thumb"></span>
+                </label>
+              </div>
             </div>
-            <div class="model-actions">
-              <button
-                class="action-btn test"
-                :disabled="isTesting"
-                @click="handleTestConnection(model)"
-              >
-                {{ isTesting ? '...' : 'TEST' }}
-              </button>
-              <label class="toggle-switch mini">
+            <!-- API Key 编辑区域 -->
+            <div v-if="editingApiKey === model.provider" class="api-key-editor">
+              <div class="api-key-input-group">
                 <input
-                  type="checkbox"
-                  :checked="model.enabled"
-                  @change="updateModelConfig(model.provider, { enabled: ($event.target as HTMLInputElement).checked })"
+                  type="password"
+                  class="api-key-input"
+                  v-model="apiKeyInput"
+                  placeholder="请输入 API Key"
+                  @keyup.enter="saveApiKey(model.provider)"
+                  @keyup.esc="cancelEditApiKey()"
                 />
-                <span class="toggle-track"></span>
-                <span class="toggle-thumb"></span>
-              </label>
+                <button class="action-btn save" @click="saveApiKey(model.provider)">保存</button>
+                <button class="action-btn cancel" @click="cancelEditApiKey()">取消</button>
+              </div>
+              <div class="api-key-hint">
+                API Key 将被加密存储在本地
+              </div>
             </div>
           </div>
         </div>
@@ -265,14 +311,14 @@ onUnmounted(() => {
         <!-- 宠物选择 -->
         <div class="setting-item full">
           <div class="setting-info">
-            <span class="setting-label">PET TYPE</span>
+            <span class="setting-label">宠物类型</span>
             <span class="setting-desc">选择宠物类型</span>
           </div>
           <div class="pet-selector">
             <label
               v-for="pet in [
-                { value: 'cat', label: 'CAT' },
-                { value: 'dog', label: 'DOG' }
+                { value: 'spirit', label: '果冻精灵', desc: 'Jelly Spirit' },
+                { value: 'ghost', label: '像素幽灵', desc: 'Pixel Ghost' }
               ]"
               :key="pet.value"
               class="pet-option"
@@ -285,33 +331,18 @@ onUnmounted(() => {
                 :checked="config.pet_config?.selected_pet === pet.value"
                 @change="updatePetType(pet.value)"
               />
-              <span>{{ pet.label }}</span>
+              <div class="pet-option-content">
+                <span class="pet-label">{{ pet.label }}</span>
+                <span class="pet-desc">{{ pet.desc }}</span>
+              </div>
             </label>
-          </div>
-        </div>
-
-        <!-- 动作间隔 -->
-        <div class="setting-item">
-          <div class="setting-info">
-            <span class="setting-label">ACTION INTERVAL</span>
-            <span class="setting-desc">动作切换间隔（秒）</span>
-          </div>
-          <div class="input-group">
-            <input
-              type="number"
-              class="number-input"
-              :value="config.pet_config?.action_interval || 25"
-              @input="updateActionInterval(parseInt(($event.target as HTMLInputElement).value) || 25)"
-              min="10"
-              max="60"
-            />
           </div>
         </div>
 
         <!-- 展示模式 -->
         <div class="setting-item full">
           <div class="setting-info">
-            <span class="setting-label">DISPLAY MODE</span>
+            <span class="setting-label">展示模式</span>
             <span class="setting-desc">Token 展示模式</span>
           </div>
           <div class="display-grid">
@@ -350,8 +381,8 @@ onUnmounted(() => {
 
 /* ── 基础容器 ── */
 .settings-panel {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
   background: #0a0a0b;
   color: #e4e4e7;
@@ -467,6 +498,36 @@ onUnmounted(() => {
   color: #ffffff;
 }
 
+.settings-panel[data-theme="light"] .action-btn.edit-key {
+  background: #fafaf9;
+  border-color: #e4e4e7;
+  color: #52525b;
+}
+
+.settings-panel[data-theme="light"] .action-btn.edit-key:hover {
+  background: #ffffff;
+  border-color: #1c1c1e;
+}
+
+.settings-panel[data-theme="light"] .api-key-editor {
+  background: #ffffff;
+  border-top-color: #e4e4e7;
+}
+
+.settings-panel[data-theme="light"] .api-key-input {
+  background: #fafaf9;
+  border-color: #e4e4e7;
+  color: #1c1c1e;
+}
+
+.settings-panel[data-theme="light"] .api-key-input:focus {
+  border-color: #1c1c1e;
+}
+
+.settings-panel[data-theme="light"] .api-key-hint {
+  color: #a1a1aa;
+}
+
 /* ── 顶部栏 ── */
 .panel-header {
   display: flex;
@@ -476,6 +537,12 @@ onUnmounted(() => {
   background: #111113;
   border-bottom: 1px solid #1c1c1e;
   flex-shrink: 0;
+  cursor: move;
+  user-select: none;
+}
+
+.panel-header:active {
+  cursor: grabbing;
 }
 
 .header-left {
@@ -741,18 +808,28 @@ onUnmounted(() => {
 
 .model-item {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
+  flex-direction: column;
   background: #0a0a0b;
   border: 1px solid #1c1c1e;
   border-radius: 6px;
-  gap: 12px;
+  overflow: hidden;
+  transition: all 0.2s;
 }
 
 .model-item.active {
-  background: #111113;
   border-color: #27272a;
+}
+
+.model-item.expanded {
+  border-color: #3f3f46;
+}
+
+.model-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  gap: 12px;
 }
 
 .model-info {
@@ -803,41 +880,147 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-/* ── 宠物选择器 ── */
-.pet-selector {
+.action-btn.edit-key {
+  background: #1c1c1e;
+  border-color: #27272a;
+  color: #a1a1aa;
+}
+
+.action-btn.edit-key:hover {
+  background: #27272a;
+  border-color: #3f3f46;
+  color: #e4e4e7;
+}
+
+/* ── API Key 编辑器 ── */
+.api-key-editor {
+  padding: 14px;
+  background: #111113;
+  border-top: 1px solid #1c1c1e;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.api-key-input-group {
   display: flex;
   gap: 8px;
+  align-items: center;
+}
+
+.api-key-input {
+  flex: 1;
+  padding: 8px 12px;
+  background: #1c1c1e;
+  border: 1px solid #27272a;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 10px;
+  color: #e4e4e7;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.api-key-input:focus {
+  border-color: #3f3f46;
+}
+
+.api-key-input::placeholder {
+  color: #52525b;
+}
+
+.action-btn.save {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: #ffffff;
+}
+
+.action-btn.save:hover {
+  background: #16a34a;
+  border-color: #16a34a;
+}
+
+.action-btn.cancel {
+  background: #1c1c1e;
+  border-color: #27272a;
+  color: #a1a1aa;
+}
+
+.action-btn.cancel:hover {
+  background: #27272a;
+  border-color: #3f3f46;
+  color: #e4e4e7;
+}
+
+.api-key-hint {
+  font-size: 8px;
+  color: #52525b;
+  text-align: center;
+}
+
+/* ── 宠物选择器 ── */
+.pet-selector {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
 }
 
 .pet-option {
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 16px;
+  padding: 14px 12px;
   background: #0a0a0b;
   border: 1px solid #1c1c1e;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 600;
-  color: #a1a1aa;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s;
 }
 
 .pet-option input {
   display: none;
 }
 
+.pet-option-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.pet-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #a1a1aa;
+  letter-spacing: 0.5px;
+}
+
+.pet-desc {
+  font-size: 9px;
+  color: #52525b;
+}
+
 .pet-option:hover {
   border-color: #27272a;
+  transform: translateY(-1px);
+}
+
+.pet-option:hover .pet-label {
   color: #e4e4e7;
 }
 
 .pet-option.selected {
   background: #111113;
-  border-color: #3f3f46;
-  color: #e4e4e7;
+  border-color: #22c55e;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.15);
+}
+
+.pet-option.selected .pet-label {
+  color: #22c55e;
+}
+
+.pet-option.selected .pet-desc {
+  color: #737373;
 }
 
 /* ── 输入框 ── */

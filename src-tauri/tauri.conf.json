@@ -51,8 +51,8 @@
       {
         "label": "settings",
         "title": "PlanGuard 设置",
-        "width": 1200,
-        "height": 720,
+        "width": 680,
+        "height": 600,
         "decorations": false,
         "transparent": false,
         "alwaysOnTop": false,

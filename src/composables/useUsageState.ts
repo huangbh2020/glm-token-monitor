@@ -44,9 +44,27 @@ export function useUsageState(used: Ref<number>, total: Ref<number>) {
 
   const stateColor = computed(() => COLORS[petState.value])
 
+  const gradientColor = computed<string>(() => {
+    const p = usagePercent.value
+    // Dead 状态：100%及以上使用灰色
+    if (p >= 100) return '#6B7280'
+    // 0-100% 映射到 HSL 色相 120°(绿) → 0°(红)
+    const hue = 120 * (1 - p / 100)
+    return `hsl(${hue}, 75%, 45%)`
+  })
+
+  const gradientStrokeColor = computed<string>(() => {
+    const p = usagePercent.value
+    if (p >= 100) return '#4B5563'
+    const hue = 120 * (1 - p / 100)
+    return `hsl(${hue}, 80%, 35%)`
+  })
+
   return {
     usagePercent,
     petState,
-    stateColor
+    stateColor,
+    gradientColor,
+    gradientStrokeColor
   }
 }
