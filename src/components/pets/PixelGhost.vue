@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { generatePixelGhostWaterPath } from '../../utils/pixelGhostWaterPath'
-
 interface Props {
   color: string          // 主色
   strokeColor: string    // 描边色
@@ -9,21 +6,12 @@ interface Props {
   width?: number
   height?: number
   state?: 'Fresh' | 'Flow' | 'Warning' | 'Panic' | 'Dead'  // 仅用于动画
-  waterLevel?: number    // 水位百分比 (0-100)
-  emptyColor?: string    // 空罐颜色
 }
 
 const props = withDefaults(defineProps<Props>(), {
   eyeColor: '#1F2937',
   width: 100,
-  height: 100,
-  waterLevel: 100,
-  emptyColor: 'rgba(229, 231, 235, 0.5)'
-})
-
-const waterPaths = computed(() => {
-  const usagePercent = 100 - props.waterLevel
-  return generatePixelGhostWaterPath(usagePercent)
+  height: 100
 })
 </script>
 
@@ -82,63 +70,14 @@ const waterPaths = computed(() => {
           additive="sum"
         />
 
-        <!-- 无水部分（空罐） -->
+        <!-- 身体 - 完整的幽灵形状 -->
         <path
-          v-if="!waterPaths.isFull"
-          :fill="props.emptyColor"
-          :stroke="props.strokeColor"
-          stroke-width="2"
-          stroke-linejoin="round"
-          stroke-linecap="round"
-          :d="waterPaths.emptyPath"
-        />
-
-        <!-- 有水部分 - 完全满时用原始路径 -->
-        <path
-          v-if="waterPaths.isFull"
           :fill="props.color"
           :stroke="props.strokeColor"
           stroke-width="2"
           stroke-linejoin="round"
           stroke-linecap="round"
           d="M 18 14 Q 32 12 46 14 Q 50 14 50 18 L 50 42 Q 50 46 46 46 Q 44 48 42 46 Q 40 44 38 46 Q 36 48 34 46 Q 32 44 30 46 Q 28 48 26 46 Q 24 44 22 46 Q 20 48 18 46 Q 14 46 14 42 L 14 18 Q 14 14 18 14 Z"
-        >
-          <!-- Fresh: 呼吸缩放 -->
-          <animateTransform
-            v-if="state === 'Fresh'"
-            attributeName="transform"
-            type="scale"
-            values="1,1; 1.02,1.02; 1,1"
-            dur="2.5s"
-            repeatCount="indefinite"
-            calcMode="spline"
-            keyTimes="0;0.5;1"
-            keySplines="0.4 0 0.6 1; 0.4 0 0.6 1"
-          />
-          <!-- Panic: 快速脉动 -->
-          <animateTransform
-            v-if="state === 'Panic'"
-            attributeName="transform"
-            type="scale"
-            values="1,1; 1.05,1.05; 1,1"
-            dur="0.3s"
-            repeatCount="indefinite"
-            calcMode="spline"
-            keyTimes="0;0.5;1"
-            keySplines="0.5 0 0.5 1; 0.5 0 0.5 1"
-          />
-        </path>
-
-        <!-- 有水部分 - 部分填充时用动态路径 -->
-        <path
-          v-if="!waterPaths.isFull && !waterPaths.isEmpty"
-          class="water-path"
-          :fill="props.color"
-          :stroke="props.strokeColor"
-          stroke-width="2"
-          stroke-linejoin="round"
-          stroke-linecap="round"
-          :d="waterPaths.waterPath"
         >
           <!-- Fresh: 呼吸缩放 -->
           <animateTransform
@@ -349,9 +288,5 @@ const waterPaths = computed(() => {
 
 .ghost-svg {
   display: block;
-}
-
-.water-path {
-  transition: d 0.3s ease-out;
 }
 </style>

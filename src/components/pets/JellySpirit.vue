@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { generateJellySpiritWaterPath } from '../../utils/jellySpiritWaterPath'
-
 interface Props {
   color: string          // 主色
   strokeColor: string    // 描边色
@@ -9,22 +6,12 @@ interface Props {
   width?: number
   height?: number
   state?: 'Fresh' | 'Flow' | 'Warning' | 'Panic' | 'Dead'  // 仅用于动画
-  waterLevel?: number    // 水位百分比 (0-100)
-  emptyColor?: string    // 空罐颜色
 }
 
 const props = withDefaults(defineProps<Props>(), {
   eyeColor: '#1F2937',
   width: 100,
-  height: 100,
-  waterLevel: 100,
-  emptyColor: 'rgba(229, 231, 235, 0.5)'
-})
-
-// 计算水位路径
-const waterPaths = computed(() => {
-  const usagePercent = 100 - props.waterLevel  // 转换：水位 → 用量
-  return generateJellySpiritWaterPath(usagePercent)
+  height: 100
 })
 </script>
 
@@ -72,17 +59,8 @@ const waterPaths = computed(() => {
           keyTimes="0;0.5;1"
           keySplines="0.5 0 0.5 1; 0.5 0 0.5 1"
         />
-        <!-- 身体 - 储水罐效果 -->
-        <!-- 无水部分（空罐） -->
-        <path
-          v-if="!waterPaths.isFull"
-          :fill="props.emptyColor"
-          :d="waterPaths.emptyPath"
-        />
-
-        <!-- 有水部分 - 完全满时用原始 ellipse -->
+        <!-- 身体 - 完整的椭圆形状 -->
         <ellipse
-          v-if="waterPaths.isFull"
           cx="32"
           cy="36"
           rx="24"
@@ -104,29 +82,6 @@ const waterPaths = computed(() => {
             keySplines="0.4 0 0.6 1; 0.4 0 0.6 1"
           />
         </ellipse>
-
-        <!-- 有水部分 - 部分填充时用动态路径 -->
-        <path
-          v-if="!waterPaths.isFull && !waterPaths.isEmpty"
-          class="water-path"
-          :fill="props.color"
-          :stroke="props.strokeColor"
-          stroke-width="2"
-          :d="waterPaths.waterPath"
-        >
-          <!-- Fresh: 呼吸动画 -->
-          <animateTransform
-            v-if="state === 'Fresh'"
-            attributeName="transform"
-            type="scale"
-            values="1,1; 1,1.05; 1,1"
-            dur="3s"
-            repeatCount="indefinite"
-            calcMode="spline"
-            keyTimes="0;0.5;1"
-            keySplines="0.4 0 0.6 1; 0.4 0 0.6 1"
-          />
-        </path>
         <!-- 高光 -->
         <ellipse cx="26" cy="20" rx="6" ry="4" fill="white" opacity="0.3"/>
         <!-- 左眼 -->
@@ -214,9 +169,5 @@ const waterPaths = computed(() => {
 
 .spirit-svg {
   display: block;
-}
-
-.water-path {
-  transition: d 0.3s ease-out;
 }
 </style>

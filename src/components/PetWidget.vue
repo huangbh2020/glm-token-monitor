@@ -25,9 +25,6 @@ const { usagePercent, petState, gradientColor, gradientStrokeColor } = useUsageS
   computed(() => usageData.value.total)
 )
 
-// 新增：水位 = 100 - 用量百分比
-const waterLevel = computed(() => 100 - usagePercent.value)
-
 // 宠物动作系统
 const { petType, currentAction, setPetType } = usePetAction()
 
@@ -228,8 +225,8 @@ onUnmounted(() => {
     <div v-if="showGlowEffect" class="glow-backdrop"></div>
 
     <!-- 动态宠物动作组件 -->
-    <JellySpirit v-if="petType === 'spirit'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :water-level="waterLevel" :width="100" :height="100" />
-    <PixelGhost v-else-if="petType === 'ghost'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :water-level="waterLevel" :width="100" :height="100" />
+    <JellySpirit v-if="petType === 'spirit'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="100" :height="100" />
+    <PixelGhost v-else-if="petType === 'ghost'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="100" :height="100" />
     <CatGifViewer v-else-if="currentAction.startsWith('cat-')" :action="currentAction" :width="100" :height="100" />
     <component v-else :is="petComponents[currentAction as keyof typeof petComponents]" :key="currentAction" />
 
