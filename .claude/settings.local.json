@@ -7,7 +7,8 @@
       "Bash(git commit -m ':*)",
       "Bash(git commit:*)",
       "Bash(cargo check:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(npx -y bun C:/Users/86134/.claude/plugins/cache/baoyu-skills/content-skills/d59ecf22c12a/skills/baoyu-image-gen/scripts/main.ts --prompt 'Professional minimalist app icon for usage monitoring tool '\\\\''PlanGuard'\\\\''. Circular progress ring gauge with smooth gradient from green \\(#10B981\\) to red \\(#F97316\\). Clean white background. Flat design with subtle depth. Vector-style, modern, tech aesthetic. 1024x1024.' --image d:/00-huangbh-project/GLM-Token-Monitor/design/icons方案1-环形进度.png --size 1024x1024)"
     ]
   }
 }

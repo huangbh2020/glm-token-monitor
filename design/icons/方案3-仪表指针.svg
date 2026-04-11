@@ -1,0 +1,95 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 背景渐变 - 深色科技感 -->
+    <linearGradient id="darkBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e293b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- 刻度渐变 -->
+    <linearGradient id="scaleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#10B981;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#F59E0B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F97316;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- 指针渐变 -->
+    <linearGradient id="needleGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#60A5FA;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- 发光效果 -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- 阴影效果 -->
+    <filter id="dropShadow3" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dx="0" dy="4" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- 背景圆形 -->
+  <circle cx="256" cy="256" r="240" fill="url(#darkBg)" filter="url(#dropShadow3)"/>
+
+  <!-- 外圈发光环 -->
+  <circle cx="256" cy="256" r="220" fill="none" stroke="url(#scaleGradient)" stroke-width="4" opacity="0.8" filter="url(#glow)"/>
+
+  <!-- 仪表盘背景弧 -->
+  <path d="M96,256 A160,160 0 0,1 416,256" fill="none" stroke="#334155" stroke-width="20" stroke-linecap="round"/>
+
+  <!-- 刻度线 -->
+  <g stroke-width="3" stroke-linecap="round">
+    <!-- 0% -->
+    <line x1="96" y1="256" x2="116" y2="256" stroke="#10B981"/>
+    <!-- 25% -->
+    <line x1="135" y1="166" x2="150" y2="180" stroke="#22c55e"/>
+    <!-- 50% -->
+    <line x1="256" y1="96" x2="256" y2="116" stroke="#F59E0B"/>
+    <!-- 75% -->
+    <line x1="377" y1="166" x2="362" y2="180" stroke="#f97316"/>
+    <!-- 100% -->
+    <line x1="416" y1="256" x2="396" y2="256" stroke="#F97316"/>
+  </g>
+
+  <!-- 刻度标签 -->
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+     font-size="18" fill="#94a3b8" text-anchor="middle" font-weight="600">
+    <text x="70" y="265">0</text>
+    <text x="256" y="70">50</text>
+    <text x="445" y="265">100</text>
+  </g>
+
+  <!-- 指针 (指向65%位置) -->
+  <g transform="rotate(234, 256, 256)">
+    <polygon points="256,256 248,120 256,100 264,120" fill="url(#needleGradient)" filter="url(#glow)"/>
+    <circle cx="256" cy="256" r="12" fill="#3B82F6"/>
+    <circle cx="256" cy="256" r="6" fill="#1e293b"/>
+  </g>
+
+  <!-- 中心显示 -->
+  <circle cx="256" cy="340" r="50" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+
+  <!-- 百分比显示 -->
+  <text x="256" y="350" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        font-size="32" font-weight="bold" fill="#3B82F6" text-anchor="middle">65</text>
+  <text x="256" y="370" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        font-size="12" fill="#64748b" text-anchor="middle">%</text>
+
+  <!-- 品牌标识 -->
+  <text x="256" y="430" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        font-size="20" font-weight="600" fill="#64748b" text-anchor="middle" letter-spacing="3">PLANGUARD</text>
+</svg>
