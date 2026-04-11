@@ -1,27 +1,18 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-
 interface Props {
-  state: 'Fresh' | 'Flow' | 'Warning' | 'Panic' | 'Dead'
+  color: string          // 主色
+  strokeColor: string    // 描边色
+  eyeColor?: string      // 眼睛颜色（可选，默认深色）
   width?: number
   height?: number
+  state?: 'Fresh' | 'Flow' | 'Warning' | 'Panic' | 'Dead'  // 仅用于动画
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  eyeColor: '#1F2937',
   width: 100,
   height: 100
 })
-
-// 颜色配置
-const colors = {
-  Fresh:  { fill: '#10B981', stroke: '#059669', eye: '#1F2937' },
-  Flow:   { fill: '#3B82F6', stroke: '#2563EB', eye: '#1F2937' },
-  Warning:{ fill: '#F59E0B', stroke: '#D97706', eye: '#1F2937' },
-  Panic:  { fill: '#EF4444', stroke: '#DC2626', eye: '#1F2937' },
-  Dead:   { fill: '#9CA3AF', stroke: '#6B7280', eye: '#6B7280' }
-}
-
-const currentColors = computed(() => colors[props.state])
 </script>
 
 <template>
@@ -69,7 +60,7 @@ const currentColors = computed(() => colors[props.state])
           keySplines="0.5 0 0.5 1; 0.5 0 0.5 1"
         />
         <!-- 身体 -->
-        <ellipse cx="32" cy="36" rx="24" ry="26" :fill="currentColors.fill" :stroke="currentColors.stroke" stroke-width="2">
+        <ellipse cx="32" cy="36" rx="24" ry="26" :fill="props.color" :stroke="props.strokeColor" stroke-width="2">
           <!-- Fresh: 呼吸动画 -->
           <animateTransform
             v-if="state === 'Fresh'"
@@ -86,7 +77,7 @@ const currentColors = computed(() => colors[props.state])
         <!-- 高光 -->
         <ellipse cx="26" cy="20" rx="6" ry="4" fill="white" opacity="0.3"/>
         <!-- 左眼 -->
-        <circle cx="26" cy="32" r="3" :fill="currentColors.eye">
+        <circle cx="26" cy="32" r="3" :fill="props.eyeColor">
           <!-- Fresh: 慢眨眼 -->
           <animate
             v-if="state === 'Fresh'"
@@ -119,7 +110,7 @@ const currentColors = computed(() => colors[props.state])
           />
         </circle>
         <!-- 右眼 -->
-        <circle cx="38" cy="32" r="3" :fill="currentColors.eye">
+        <circle cx="38" cy="32" r="3" :fill="props.eyeColor">
           <!-- Fresh: 慢眨眼（稍延迟） -->
           <animate
             v-if="state === 'Fresh'"
