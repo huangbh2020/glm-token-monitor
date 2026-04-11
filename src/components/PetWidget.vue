@@ -20,7 +20,7 @@ const { usageData, setupEventListener } = useTauriEvents()
 
 // 计算是否显示光晕层
 const showGlowEffect = computed(() => basicConfig.value?.enable_glow ?? true)
-const { petState } = useUsageState(
+const { usagePercent, petState, gradientColor, gradientStrokeColor } = useUsageState(
   computed(() => usageData.value.used),
   computed(() => usageData.value.total)
 )
@@ -225,8 +225,8 @@ onUnmounted(() => {
     <div v-if="showGlowEffect" class="glow-backdrop"></div>
 
     <!-- 动态宠物动作组件 -->
-    <JellySpirit v-if="petType === 'spirit'" :state="petState" :width="100" :height="100" />
-    <PixelGhost v-else-if="petType === 'ghost'" :state="petState" :width="100" :height="100" />
+    <JellySpirit v-if="petType === 'spirit'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="100" :height="100" />
+    <PixelGhost v-else-if="petType === 'ghost'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="100" :height="100" />
     <CatGifViewer v-else-if="currentAction.startsWith('cat-')" :action="currentAction" :width="100" :height="100" />
     <component v-else :is="petComponents[currentAction as keyof typeof petComponents]" :key="currentAction" />
 
