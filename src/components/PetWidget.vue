@@ -5,6 +5,7 @@ import { useTauriEvents } from '../composables/useTauriEvents'
 import { useDisplayMode } from '../composables/useDisplayMode'
 import { useSettings } from '../composables/useSettings'
 import { usePetAction } from '../composables/usePetAction'
+import { useTheme } from '../composables/useTheme'
 import type { PetType } from '../types/config'
 import CatGifViewer from './pets/CatGifViewer.vue'
 import DogSit from './pets/DogSit.vue'
@@ -17,6 +18,7 @@ import PixelGhost from './pets/PixelGhost.vue'
 const { displayMode } = useDisplayMode()
 const { loadConfig, setupConfigListener, config, basicConfig, hasApiKey } = useSettings()
 const { usageData, setupEventListener } = useTauriEvents()
+const { currentTheme } = useTheme()
 
 // 计算是否显示光晕层
 const showGlowEffect = computed(() => basicConfig.value?.enable_glow ?? true)
@@ -47,25 +49,43 @@ const petComponents = {
 // 双指标数据
 const timePercent = computed(() => usageData.value.time_percent ?? 0)
 const tokensPercent = computed(() => usageData.value.tokens_percent ?? 0)
-const timeRemaining = computed(() => usageData.value.time_remaining)
 
-const heartMessages: Record<string, string> = {
-  Fresh:   '新的一天，能量满格！冲冲冲！',
-  Flow:    '代码写得正顺手，不要打扰我~',
-  Warning: '用量有点多了，要省着点...',
-  Panic:   '要炸了！谁在疯狂 Call API？！',
-  Dead:    '系统崩溃... 请充值续命...',
+// 格式化重置时间
+function formatResetTime(timestamp?: number): string {
+  if (!timestamp) return '--'
+  const date = new Date(timestamp)
+  const now = new Date()
+  const isToday = date.getDate() === now.getDate() && date.getMonth() === now.getMonth()
+  if (isToday) {
+    return `今天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+  }
+  return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
 }
-const heartMsg = computed(() => heartMessages[petState.value])
 
-// 刺新状态
+const tokensResetTime = computed(() => formatResetTime(usageData.value.tokens_reset_time))
+const timeResetTime = computed(() => formatResetTime(usageData.value.time_reset_time))
+
+// 刷新状态
 const isRefreshing = ref(false)
 const lastUpdateTime = ref<string>('')
 const fetchError = ref<string>('')
+const nextRefreshTime = ref<string>('')
+const nextRefreshCountdown = ref(60) // 秒
+
+// 计算下一次刷新时间的倒计时
+function updateCountdown() {
+  if (nextRefreshCountdown.value > 0) {
+    nextRefreshCountdown.value--
+  }
+  if (nextRefreshCountdown.value <= 0) {
+    nextRefreshCountdown.value = 60
+  }
+  nextRefreshTime.value = `${nextRefreshCountdown.value}s`
+}
 
 // 悬浮与拖拽相关状态
-const isExpanded = ref(false)
 const isDragging = ref(false)
+const showInfoPanel = ref(false)
 
 // 拖动和点击处理
 let dragStartTime = 0
@@ -107,19 +127,43 @@ const handleClick = async (event: MouseEvent) => {
 
   // 如果移动距离小于5px且持续时间小于300ms，认为是点击而非拖动
   if (dragDistance < 5 && dragDuration < 300) {
-    try {
-      const { invoke } = await import('@tauri-apps/api/core')
-
-      // 如果未配置 API，打开设置面板；否则打开信息面板
-      if (!hasApiKey.value) {
+    if (!hasApiKey.value) {
+      // 未配置 API，打开设置面板
+      try {
+        const { invoke } = await import('@tauri-apps/api/core')
         await invoke('open_settings_panel')
-      } else {
-        await invoke('open_info_panel')
+      } catch (err) {
+        console.error('Open settings failed:', err)
       }
-    } catch (err) {
-      console.error('Open panel failed:', err)
+    } else {
+      // 已配置 API，切换信息面板气泡
+      showInfoPanel.value = !showInfoPanel.value
     }
   }
+}
+
+// 关闭信息面板
+function closeInfoPanel() {
+  showInfoPanel.value = false
+}
+
+// 打开设置窗口
+async function openSettings() {
+  showInfoPanel.value = false
+  try {
+    const { invoke } = await import('@tauri-apps/api/core')
+    await invoke('open_settings_panel')
+  } catch (err) {
+    console.error('Open settings failed:', err)
+  }
+}
+
+// 根据百分比获取状态颜色
+function getStatusColor(percent: number): string {
+  if (percent >= 96) return '#6B7280'
+  if (percent >= 81) return '#F97316'
+  if (percent >= 61) return '#F59E0B'
+  return '#3B82F6'
 }
 
 // 双击处理 - 阻止全屏
@@ -132,83 +176,49 @@ const handleDblClick = (event: MouseEvent) => {
 // 静默刷新数据（不显示加载提示）
 async function refreshUsageData() {
   try {
+    isRefreshing.value = true
     const { invoke } = await import('@tauri-apps/api/core')
     const data = await invoke<typeof usageData.value>('get_current_usage')
     usageData.value = data
     const now = new Date()
-    lastUpdateTime.value = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`
+    lastUpdateTime.value = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`
     fetchError.value = ''
+    // 重置倒计时
+    nextRefreshCountdown.value = 60
   } catch (err) {
     fetchError.value = String(err)
     console.error('Silent refresh failed:', err)
+  } finally {
+    isRefreshing.value = false
   }
 }
 
 // 定时刷新数据（1分钟间隔）
 const DATA_REFRESH_INTERVAL = 60000 // 1分钟
 let dataRefreshTimer: number | null = null
+let countdownTimer: number | null = null
 
-// 定时随机展现心语对话气泡
-const showQuoteBubble = ref(false)
-const showApiConfigBubble = ref(false)
-let quoteTimer: number | null = null
-
-// 监听气泡状态变化，动态调整窗口大小
-watch(showApiConfigBubble, async (isVisible) => {
+// 监听 API Key 配置状态和信息面板状态，动态调整窗口大小
+watch([hasApiKey, showInfoPanel, displayMode], async ([hasKey, showPanel, mode]) => {
   try {
     const { invoke } = await import('@tauri-apps/api/core')
-
-    if (isVisible) {
-      // 气泡显示：扩大窗口
-      await invoke('resize_main_window', {
-        width: 280,
-        height: 140
-      })
+    if (!hasKey) {
+      // 没有 API Key，显示配置气泡
+      await invoke('resize_main_window', { width: 160, height: 180 })
+    } else if (showPanel) {
+      // 显示信息面板（宠物隐藏，面板居中）
+      await invoke('resize_main_window', { width: 160, height: 160 })
+    } else if (mode && mode !== 'none') {
+      // 有 token 显示模式，需要更大空间
+      await invoke('resize_main_window', { width: 120, height: 120 })
     } else {
-      // 气泡隐藏：恢复小窗口
-      await invoke('resize_main_window', {
-        width: 120,
-        height: 120
-      })
+      // 正常状态
+      await invoke('resize_main_window', { width: 120, height: 120 })
     }
   } catch (err) {
     console.error('Failed to resize window:', err)
   }
-})
-
-function setupQuoteTimer() {
-  // 延迟检查 API 配置状态
-  setTimeout(() => {
-    if (!hasApiKey.value) {
-      showApiConfigBubble.value = true
-
-      // 10秒后自动隐藏
-      setTimeout(() => {
-        showApiConfigBubble.value = false
-      }, 10000)
-
-      // 用户点击宠物或气泡后也会隐藏
-      const hideBubble = () => {
-        showApiConfigBubble.value = false
-        document.removeEventListener('mousedown', hideBubble)
-      }
-      // 延迟绑定监听器，避免立即触发
-      setTimeout(() => {
-        document.addEventListener('mousedown', hideBubble, { once: true })
-      }, 100)
-    }
-  }, 2000) // 2秒后显示
-}
-
-// 打开设置窗口
-async function openSettings() {
-  try {
-    const { invoke } = await import('@tauri-apps/api/core')
-    await invoke('open_settings_panel')
-  } catch (err) {
-    console.error('Open settings failed:', err)
-  }
-}
+}, { immediate: true })
 
 // 设置定时刷新数据（每1分钟）
 function setupDataRefreshTimer() {
@@ -219,11 +229,15 @@ function setupDataRefreshTimer() {
   dataRefreshTimer = window.setInterval(() => {
     refreshUsageData()
   }, DATA_REFRESH_INTERVAL)
+
+  // 设置倒计时定时器，每秒更新
+  countdownTimer = window.setInterval(() => {
+    updateCountdown()
+  }, 1000)
 }
 
 onMounted(async () => {
   // 【重要修复】：把启动定时器放到最顶部！防止由于 Tauri 或其他 await 函数执行超时阻塞定时器注册。
-  setupQuoteTimer()
   setupDataRefreshTimer()
 
   try {
@@ -259,163 +273,188 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (quoteTimer) clearInterval(quoteTimer)
   if (dataRefreshTimer) clearInterval(dataRefreshTimer)
+  if (countdownTimer) clearInterval(countdownTimer)
 })
 </script>
 
 <template>
-  <div class="pet-widget" :class="[`pet-${petState.toLowerCase()}`, { expanded: isExpanded }]"
+  <div class="pet-widget" :class="[`pet-${petState.toLowerCase()}`, { 'show-panel': showInfoPanel }]"
     data-tauri-drag-region
     @mousedown="startDrag"
     @click="handleClick"
-    @dblclick.prevent="handleDblClick"
-  >
-    <!-- 光晕层 -->
-    <!-- <div v-if="showGlowEffect" class="glow-backdrop"></div> -->
+    @dblclick.prevent="handleDblClick">
+    <!-- 宠物 -->
+    <div class="pet-container" :class="{ hidden: showInfoPanel && hasApiKey }">
+      <JellySpirit v-if="petType === 'spirit'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="80" :height="80" />
+      <PixelGhost v-else-if="petType === 'ghost'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="80" :height="80" />
+      <CatGifViewer v-else-if="currentAction.startsWith('cat-')" :action="currentAction" :width="80" :height="80" />
+      <component v-else :is="petComponents[currentAction as keyof typeof petComponents]" :key="currentAction" />
 
-    <!-- 动态宠物动作组件 -->
-    <JellySpirit v-if="petType === 'spirit'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="100" :height="100" />
-    <PixelGhost v-else-if="petType === 'ghost'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="100" :height="100" />
-    <CatGifViewer v-else-if="currentAction.startsWith('cat-')" :action="currentAction" :width="100" :height="100" />
-    <component v-else :is="petComponents[currentAction as keyof typeof petComponents]" :key="currentAction" />
-
-    <!-- 心语 + 双指标信息面板 -->
-    <div class="heart-msg">
-      <!-- 加载中覆盖层 -->
-      <div v-if="isRefreshing" class="hm-loading">
-        <span class="hm-spinner"></span>
-        <span style="font-size:8px;color:#94A3B8">刷新中...</span>
+      <!-- 5 种展示模式多态呈现（跟随宠物隐藏） -->
+      <div v-if="displayMode === 'holo-bubble'" class="holo-bubble token-mode" :class="`state-${petState.toLowerCase()}`">
+        <span class="holo-val">{{ 100 - tokensPercent }}%</span>
       </div>
-      <template v-else>
-        <!-- 情感心语 -->
-        <div class="hm-quote">{{ heartMsg }}</div>
-        <!-- 错误提示 -->
-        <div v-if="fetchError" class="hm-error">⚠ {{ fetchError.slice(0, 30) }}</div>
-        <!-- 月 MCP 额度 -->
-        <div class="hm-metric">
-          <span class="hm-label">🗓 月额</span>
-          <div class="hm-bar-wrap">
-            <div class="hm-bar hm-bar-time" :style="{ width: timePercent + '%' }"></div>
-          </div>
-          <span class="hm-val">{{ timePercent }}%</span>
+      <div v-else-if="displayMode === 'cyber-ring'" class="cyber-ring token-mode" :class="`state-${petState.toLowerCase()}`">
+        <svg viewBox="0 0 100 100" class="cr-svg">
+          <circle class="cr-bg-dashed" cx="50" cy="50" r="46"/>
+          <circle class="cr-progress" cx="50" cy="50" r="42"
+            stroke-dasharray="264"
+            :stroke-dashoffset="264 * (tokensPercent / 100)"
+          />
+        </svg>
+        <div class="cr-center-val">{{ 100 - tokensPercent }}%</div>
+      </div>
+      <div v-else-if="displayMode === 'aura-field'" class="aura-field token-mode" :class="`state-${petState.toLowerCase()}`">
+        <div class="aura-ripple r1"></div>
+        <div class="aura-ripple r2"></div>
+        <div class="aura-ripple r3"></div>
+        <div class="aura-val">{{ 100 - tokensPercent }}%</div>
+      </div>
+      <div v-else-if="displayMode === 'energy-core'" class="energy-core token-mode" :class="`state-${petState.toLowerCase()}`">
+        <div class="ec-grid">
+          <div v-for="i in 16" :key="i" class="ec-pixel" :class="{ on: (100 - tokensPercent) >= (i * 6.25 - 3.125) }"></div>
         </div>
-        <!-- 5h Token 额度 -->
-        <div class="hm-metric">
-          <span class="hm-label">⏱ 5h额</span>
-          <div class="hm-bar-wrap">
-            <div class="hm-bar hm-bar-tok" :style="{ width: tokensPercent + '%' }"></div>
-          </div>
-          <span class="hm-val">{{ tokensPercent }}%</span>
+        <div class="ec-val">{{ 100 - tokensPercent }}%</div>
+      </div>
+      <div v-else-if="displayMode === 'status-floater'" class="status-floater token-mode" :class="`state-${petState.toLowerCase()}`">
+        <div class="sf-bar-container">
+          <div class="sf-bar-fill" :style="{ height: (100 - tokensPercent) + '%' }"></div>
         </div>
-        <!-- 剩余次数 -->
-        <div v-if="timeRemaining !== undefined" class="hm-remaining">
-          剩余 {{ timeRemaining }} 次
-        </div>
-        <!-- 最后更新时间 -->
-        <div v-if="lastUpdateTime" class="hm-time">⟳ {{ lastUpdateTime }}</div>
-      </template>
+        <div class="sf-text">{{ 100 - tokensPercent }}%</div>
+      </div>
     </div>
 
-    <!-- 独立的定时心语对话框（置于底部并指向上方） -->
+    <!-- API 配置提示气泡（未配置时显示） -->
     <transition name="bubble-fade">
-      <div v-if="showQuoteBubble && !isExpanded" class="pixel-bubble quote-bubble" :class="`bubble-${petState.toLowerCase()}`"
+      <div v-if="!hasApiKey" class="api-config-bubble"
+        @mousedown.stop
+        @click.stop="openSettings"
+        @dblclick.stop>
+        <span class="bubble-icon">🔑</span>
+        <span class="bubble-text">配置 API Key</span>
+        <span class="bubble-arrow">→</span>
+      </div>
+    </transition>
+
+    <!-- 信息面板气泡（已配置 API 时，点击宠物显示） -->
+    <transition name="panel-slide">
+      <div v-if="showInfoPanel && hasApiKey" class="info-bubble" :data-theme="currentTheme"
         @mousedown.stop
         @click.stop
         @dblclick.stop>
-        <span class="bubble-val quote-text">{{ heartMsg }}</span>
+        <!-- 顶部栏 -->
+        <div class="info-header">
+          <div class="info-header-left">
+            <span class="info-time">{{ lastUpdateTime || '--:--' }}</span>
+            <span class="info-countdown">{{ nextRefreshTime }}后刷新</span>
+          </div>
+          <div class="info-actions">
+            <button class="info-btn" @click="refreshUsageData" :disabled="isRefreshing" title="刷新">
+              <svg :class="{ spinning: isRefreshing }" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M23 4v6h-6M1 20v-6h6"/>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+              </svg>
+            </button>
+            <button class="info-btn" @click="openSettings" title="设置">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </button>
+            <button class="info-btn close" @click="closeInfoPanel" title="关闭">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- 错误提示 -->
+        <div v-if="fetchError" class="info-error">
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 8v4M12 16h.01"/>
+          </svg>
+          <span>{{ fetchError.slice(0, 15) }}</span>
+        </div>
+
+        <!-- 数据区域 -->
+        <div class="info-data">
+          <!-- 5h Token -->
+          <div class="info-row">
+            <div class="info-row-header">
+              <span class="info-label">5h Token</span>
+              <span class="info-val" :style="{ color: getStatusColor(tokensPercent) }">{{ 100 - tokensPercent }}%</span>
+            </div>
+            <div class="info-bar">
+              <div class="bar-fill" :style="{ width: tokensPercent + '%', background: getStatusColor(tokensPercent) }"></div>
+            </div>
+            <span class="info-reset">刷新: {{ tokensResetTime }}</span>
+          </div>
+          <!-- MCP 额度 -->
+          <div class="info-row">
+            <div class="info-row-header">
+              <span class="info-label">MCP额度</span>
+              <span class="info-val" :style="{ color: getStatusColor(timePercent) }">{{ 100 - timePercent }}%</span>
+            </div>
+            <div class="info-bar">
+              <div class="bar-fill" :style="{ width: timePercent + '%', background: getStatusColor(timePercent) }"></div>
+            </div>
+            <span class="info-reset">刷新: {{ timeResetTime }}</span>
+          </div>
+        </div>
       </div>
     </transition>
-
-    <!-- API 配置提示气泡（侧边悬浮卡片） -->
-    <transition name="bubble-fade">
-      <div v-if="showApiConfigBubble && !isExpanded" class="pixel-bubble api-config-bubble"
-        @mousedown.stop
-        @click="openSettings"
-        @dblclick.stop>
-        <div class="bubble-header">
-          <span class="bubble-icon">🔑</span>
-          <span class="bubble-title-short">配置 API</span>
-        </div>
-        <div class="bubble-desc">请先配置 API Key</div>
-        <div class="bubble-action">
-          去设置 →
-        </div>
-      </div>
-    </transition>
-
-    <!-- 5 种展示模式多态呈现 -->
-    <!-- 0. none - 不显示用量 -->
-    <!-- 1. holo-bubble -->
-    <div v-if="displayMode === 'holo-bubble'" class="holo-bubble token-mode" :class="`state-${petState.toLowerCase()}`">
-      <div class="scanlines"></div>
-      5h: <span class="holo-val">{{ 100 - tokensPercent }}%</span>
-    </div>
-
-    <!-- 2. cyber-ring -->
-    <div v-else-if="displayMode === 'cyber-ring'" class="cyber-ring token-mode" :class="`state-${petState.toLowerCase()}`">
-      <svg viewBox="0 0 100 100" class="cr-svg">
-        <circle class="cr-bg-dashed" cx="50" cy="50" r="46"/>
-        <circle class="cr-progress" cx="50" cy="50" r="42"
-          stroke-dasharray="264"
-          :stroke-dashoffset="264 * (tokensPercent / 100)"
-        />
-      </svg>
-      <div class="cr-center-val">{{ 100 - tokensPercent }}%</div>
-    </div>
-
-    <!-- 3. aura-field -->
-    <div v-else-if="displayMode === 'aura-field'" class="aura-field token-mode" :class="`state-${petState.toLowerCase()}`">
-      <div class="aura-ripple r1"></div>
-      <div class="aura-ripple r2"></div>
-      <div class="aura-ripple r3"></div>
-      <div class="aura-val">{{ 100 - tokensPercent }}%</div>
-    </div>
-
-    <!-- 4. energy-core -->
-    <div v-else-if="displayMode === 'energy-core'" class="energy-core token-mode" :class="`state-${petState.toLowerCase()}`">
-      <div class="ec-grid">
-        <div v-for="i in 16" :key="i" class="ec-pixel" :class="{ on: (100 - tokensPercent) >= (i * 6.25 - 3.125) }"></div>
-      </div>
-      <div class="ec-val">{{ 100 - tokensPercent }}%</div>
-    </div>
-
-    <!-- 5. status-floater -->
-    <div v-else-if="displayMode === 'status-floater'" class="status-floater token-mode" :class="`state-${petState.toLowerCase()}`">
-      <div class="sf-bar-container">
-        <div class="sf-bar-fill" :style="{ height: (100 - tokensPercent) + '%' }"></div>
-      </div>
-      <div class="sf-text">{{ 100 - tokensPercent }}%</div>
-    </div>
   </div>
 </template>
 
 <style scoped>
 /* ── 基础容器 ── */
 .pet-widget {
-  width: 120px;
-  height: 120px;
+  width: 100%;
+  height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: flex-start; /* 改为左对齐，宠物固定在左侧 */
+  align-items: flex-start;
+  justify-content: center;
   background: transparent !important;
   position: relative;
   cursor: pointer;
   user-select: none;
   pointer-events: auto;
   border-radius: 8px;
-  /* 允许气泡溢出显示在容器外部 */
   overflow: visible;
   -webkit-app-region: drag;
-  padding-left: 20px; /* 宠物距离左边20px，居中于120px窗口 */
+  padding-top: 8px;
 }
 .pet-widget:active { cursor: pointer; }
 
-/* 扩展状态下的窗口大小 */
-.pet-widget.expanded {
-  width: 246px;
-  height: 246px;
-  overflow: visible;
+.pet-container {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  width: 80px;
+  height: 80px;
+}
+
+.pet-container.hidden {
+  opacity: 0;
+  transform: scale(0.8);
+  pointer-events: none;
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* 显示信息面板时调整布局 */
+.pet-widget.show-panel {
+  padding-top: 0;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ── 光晕层 ── */
@@ -636,394 +675,122 @@ onUnmounted(() => {
   50%      { opacity: 0.5; transform: translateY(-6px); }
 }
 
-/* ── 心语 + 信息面板 ── */
-.heart-msg {
-  position: absolute;
-  inset: 3px;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  background: rgba(8, 14, 28, 0.91);
-  color: #E2E8F0;
-  pointer-events: none;
-  opacity: 0;
-  transition: all 350ms ease-out;
-  z-index: 10;
-  font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
-  border: 1px solid rgba(255,255,255,0.1);
-  overflow: hidden;
-  padding: 6px 9px;
-}
-/* 鼠标悬停不再触发面板显示 */
-.pet-widget.expanded .heart-msg {
-  opacity: 1;
-}
-
-/* 扩展状态下的内容放大样式 */
-.pet-widget.expanded .heart-msg {
-  transform: scale(1.5);
-}
-
-/* 情感心语文字 */
-.hm-quote {
-  font-size: 7.5px;
-  line-height: 1.4;
-  text-align: center;
-  color: #CBD5E1;
-  margin-bottom: 2px;
-}
-
-/* 单行指标：图标 + 进度条 + 百分比 */
-.hm-metric {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  width: 100%;
-}
-.hm-label {
-  font-size: 7px;
-  color: #94A3B8;
-  flex-shrink: 0;
-  width: 26px;
-}
-.hm-bar-wrap {
-  flex: 1;
-  height: 4px;
-  background: rgba(255,255,255,0.1);
-  border-radius: 2px;
-  overflow: hidden;
-}
-.hm-bar {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.4s ease;
-  max-width: 100%;
-}
-/* 月额度进度条颜色跟随宠物状态 */
-.pet-fresh  .hm-bar-time { background: #10B981; }
-.pet-flow   .hm-bar-time { background: #3B82F6; }
-.pet-warning .hm-bar-time { background: #F59E0B; }
-.pet-panic  .hm-bar-time { background: #EF4444; }
-.pet-dead   .hm-bar-time { background: #6B7280; }
-/* 5h Token 进度条固定蓝色 */
-.hm-bar-tok { background: #60A5FA; }
-
-.hm-val {
-  font-size: 7px;
-  color: #94A3B8;
-  flex-shrink: 0;
-  width: 18px;
-  text-align: right;
-}
-/* 剩余次数提示 */
-.hm-remaining {
-  font-size: 7px;
-  color: #64748B;
-  margin-top: 1px;
-}
-/* 最后更新时间 */
-.hm-time {
-  font-size: 6.5px;
-  color: #475569;
-  margin-top: 2px;
-}
-/* 错误提示 */
-.hm-error {
-  font-size: 7px;
-  color: #F87171;
-  text-align: center;
-  line-height: 1.3;
-}
-/* 加载中状态 */
-.hm-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-.hm-spinner {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(148,163,184,0.2);
-  border-top-color: #60A5FA;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ── Token 剩余容量像素气泡 (Retro Bubble) ── */
-.pixel-bubble {
-  position: absolute;
-  top: 10px;
-  right: 6px;
-  background: #0F172A; /* 深色背景以提升对比度 */
-  border: 2px solid #334155;
-  /* 经典的像素风硬阴影 */
-  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.8);
-  padding: 3px 6px; /* 内边距 */
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; /* 无衬线等宽字体 */
-  font-size: 10px; /* 增大字号 */
-  font-weight: 700;
-  letter-spacing: 0.5px; /* 字间距 */
-  color: #94A3B8; /* 前缀 'Tk:' 的颜色 */
-  z-index: 15;
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  border-radius: 3px;
-  /* 悬浮微动效 */
-  animation: float-bubble 2s ease-in-out infinite alternate;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-/* 气泡对话框的尾巴 (外侧边缘) */
-.pixel-bubble::after {
-  content: '';
-  position: absolute;
-  bottom: -6px;
-  left: 6px;
-  width: 0;
-  height: 0;
-  border-left: 6px solid #334155;
-  border-bottom: 6px solid transparent;
-}
-
-/* 气泡对话框的尾巴 (内侧留白) */
-.pixel-bubble::before {
-  content: '';
-  position: absolute;
-  bottom: -2.5px;
-  left: 8.5px;
-  width: 0;
-  height: 0;
-  border-left: 3.5px solid #0F172A;
-  border-bottom: 3.5px solid transparent;
-  z-index: 1;
-}
-
-/* 悬浮面板展开时的样式变化 */
-.pet-widget.expanded .pixel-bubble {
-  opacity: 0;
-  transform: translateY(-8px) scale(0.8);
-}
-
-/* 长文本的心语模式特定样式扩展（置于底部中央，避免遮挡宠物和token） */
-.quote-bubble {
-  left: 50%;
-  right: auto;
-  top: auto;
-  bottom: -4px;
-  transform: translateX(-50%);
-  max-width: 160px; /* 两倍宽度，更好展示心语内容 */
-  white-space: normal;
-  text-align: center; /* 居中对齐 */
-  line-height: 1.25;
-  padding: 3px 5px;
-  border-radius: 4px;
-  justify-content: center;
-  overflow-wrap: break-word;
-  z-index: 50;
-}
-/* 尾巴指向下方（朝向宠物） */
-.quote-bubble::after {
-  top: auto;
-  bottom: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-top: 6px solid #334155;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-bottom: none;
-}
-.quote-bubble::before {
-  top: auto;
-  bottom: -2.5px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-top: 3.5px solid #0F172A;
-  border-left: 3.5px solid transparent;
-  border-right: 3.5px solid transparent;
-  border-bottom: none;
-}
-
-.quote-text {
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  font-size: 7.5px; /* 极限压缩字号，允许四行中文安全展示 */
-  font-weight: 500; /* 反加粗，减少水平体积 */
-  letter-spacing: normal; 
-}
-
-/* Vue 依靠基础的 transition 就能平滑处理，只需定义从/去状态 */
-.bubble-fade-enter-from,
-.bubble-fade-leave-to {
-  opacity: 0;
-  transform: scale(0.7) translateY(6px);
-}
-
-@keyframes float-bubble {
-  from { transform: translateY(0); }
-  to { transform: translateY(-4px); }
-}
-
-/* 高对比度的亮色系带点微发光 */
-.bubble-fresh .bubble-val { color: #34D399; text-shadow: 0 0 3px rgba(52,211,153,0.3); }
-.bubble-flow .bubble-val { color: #60A5FA; text-shadow: 0 0 3px rgba(96,165,250,0.3); }
-.bubble-warning .bubble-val { color: #FBBF24; text-shadow: 0 0 3px rgba(251,191,36,0.3); }
-.bubble-panic .bubble-val { color: #F87171; text-shadow: 0 0 3px rgba(248,113,113,0.4); }
-.bubble-panic {
-  /* 恐慌状态抖动 */
-  animation: float-bubble 0.4s ease-in-out infinite alternate, shake-bubble 0.2s infinite;
-}
-.bubble-dead .bubble-val { color: #9CA3AF; }
-
-@keyframes shake-bubble {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(1px); }
-  75% { transform: translateX(-1px); }
-  100% { transform: translateX(0); }
-}
-
-/* ── API 配置提示气泡（侧边悬浮卡片）── */
+/* ── API 配置提示气泡（宠物下方紧凑对话框）── */
 .api-config-bubble {
   position: absolute;
-  left: 120px; /* 从容器右边缘开始（120px是宠物窗口宽度） */
-  right: auto;
-  top: 50%;
-  bottom: auto;
-  transform: translateY(-50%); /* 只需要垂直居中 */
-  min-width: 140px;
-  max-width: 140px;
-  padding: 10px 12px;
-  cursor: pointer;
-  background: linear-gradient(135deg, rgba(30, 58, 95, 0.95) 0%, rgba(26, 52, 84, 0.95) 100%);
-  border: 1px solid rgba(59, 130, 246, 0.4);
-  border-radius: 8px;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-radius: 16px;
   z-index: 1000;
-  animation: slideInRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), api-float 3s ease-in-out infinite;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 12px rgba(59, 130, 246, 0.3);
+  animation: bubbleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), bubbleFloat 3s ease-in-out infinite;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 8px rgba(59, 130, 246, 0.2);
   backdrop-filter: blur(8px);
   pointer-events: auto;
+  white-space: nowrap;
+}
+
+/* 气泡上方的小三角 */
+.api-config-bubble::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid rgba(59, 130, 246, 0.4);
 }
 
 .api-config-bubble::after {
-  /* 左侧箭头指向宠物 */
   content: '';
   position: absolute;
-  left: -6px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: -3px;
+  left: 50%;
+  transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-right: 6px solid #3b82f6;
-  border-top: 5px solid transparent;
-  border-bottom: 5px solid transparent;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 4px solid rgba(15, 23, 42, 0.95);
 }
 
 .api-config-bubble:hover {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.95) 0%, rgba(29, 78, 216, 0.95) 100%);
+  background: rgba(30, 41, 59, 0.98);
   border-color: rgba(59, 130, 246, 0.6);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 24px rgba(59, 130, 246, 0.5);
-  transform: translateY(-50%) translateX(5px) scale(1.02);
-}
-
-.api-config-bubble .bubble-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 16px rgba(59, 130, 246, 0.3);
+  transform: translateX(-50%) translateY(-2px);
 }
 
 .api-config-bubble .bubble-icon {
-  font-size: 20px;
-  animation: key-shake 0.6s ease-in-out infinite;
-  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.5));
+  font-size: 14px;
+  animation: keyWiggle 1s ease-in-out infinite;
 }
 
-.api-config-bubble .bubble-title-short {
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+.api-config-bubble .bubble-text {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 11px;
-  font-weight: 700;
-  color: #60a5fa;
-  line-height: 1.2;
-  text-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
-}
-
-.api-config-bubble .bubble-desc {
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  font-size: 9px;
-  color: #a1a1aa;
-  line-height: 1.3;
-}
-
-.api-config-bubble .bubble-action {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  font-size: 10px;
   font-weight: 600;
   color: #60a5fa;
-  margin-top: 2px;
-  padding: 6px 8px;
-  background: rgba(59, 130, 246, 0.2);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  border-radius: 5px;
-  transition: all 0.2s ease;
 }
 
-.api-config-bubble:hover .bubble-action {
-  background: rgba(59, 130, 246, 0.3);
-  border-color: rgba(59, 130, 246, 0.5);
+.api-config-bubble .bubble-arrow {
+  font-size: 12px;
+  color: #60a5fa;
+  transition: transform 0.2s ease;
 }
 
-@keyframes slideInRight {
+.api-config-bubble:hover .bubble-arrow {
+  transform: translateX(3px);
+}
+
+@keyframes bubbleIn {
   from {
     opacity: 0;
-    transform: translateY(-50%) translateX(10px) scale(0.9);
+    transform: translateX(-50%) translateY(8px) scale(0.9);
   }
   to {
     opacity: 1;
-    transform: translateY(-50%) translateX(0) scale(1);
+    transform: translateX(-50%) translateY(0) scale(1);
   }
 }
 
-@keyframes api-float {
+@keyframes bubbleFloat {
   0%, 100% {
-    transform: translateY(-50%) translateX(0);
+    transform: translateX(-50%) translateY(0);
   }
   50% {
-    transform: translateY(calc(-50% - 2px)) translateX(0);
+    transform: translateX(-50%) translateY(-3px);
   }
 }
 
-@keyframes key-shake {
+@keyframes keyWiggle {
   0%, 100% {
     transform: rotate(0deg);
   }
   25% {
-    transform: rotate(-12deg);
+    transform: rotate(-8deg);
   }
   75% {
-    transform: rotate(12deg);
+    transform: rotate(8deg);
   }
 }
 
 /* ── Display Modes Base ── */
-.token-mode { z-index: 20; pointer-events: none; transition: opacity 0.3s ease, transform 0.3s ease; }
-.pet-widget.expanded .token-mode { opacity: 0; transform: scale(0.8); }
+.token-mode { z-index: 20; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease; position: absolute; }
 
 /* 1. Holo Bubble */
 .holo-bubble {
-  position: absolute; top: 15px; right: 4px;
+  top: 0; right: -10px;
   background: rgba(15, 23, 42, 0.85); border: 1px solid #475569;
   box-shadow: 0 0 6px rgba(0,0,0,0.5), inset 0 0 8px rgba(96,165,250,0.1);
   padding: 1px 4px; font-family: ui-monospace, SFMono-Regular, monospace;
@@ -1055,7 +822,7 @@ onUnmounted(() => {
 
 /* 2. Cyber Ring */
 .cyber-ring {
-  position: absolute; inset: 4px; pointer-events: none; z-index: 1;
+  inset: -10px; pointer-events: none; z-index: 1;
 }
 .cr-svg {
   width: 100%; height: 100%; transform: rotate(-90deg); filter: drop-shadow(0 0 3px rgba(0,0,0,0.5));
@@ -1075,7 +842,7 @@ onUnmounted(() => {
 .state-dead .cr-progress { stroke: #9CA3AF; }
 
 .cr-center-val {
-  position: absolute; bottom: 8px; right: 0px; font-family: 'Press Start 2P', monospace; font-size: 10px; font-weight: bold;
+  position: absolute; bottom: -8px; right: -12px; font-family: 'Press Start 2P', monospace; font-size: 10px; font-weight: bold;
   background: rgba(15,23,42,0.9); padding: 2px 3px; border-radius: 3px; border: 1px solid #1E293B;
   z-index: 25;
 }
@@ -1090,7 +857,7 @@ onUnmounted(() => {
 
 /* 3. Aura Field */
 .aura-field {
-  position: absolute; inset: 4px; pointer-events: none; z-index: 0;
+  inset: -10px; pointer-events: none; z-index: 0;
   display: flex; justify-content: center; align-items: center;
 }
 .aura-ripple {
@@ -1107,7 +874,7 @@ onUnmounted(() => {
 .state-dead .aura-ripple { border-color: #6B7280; animation: none; opacity: 0.2; width: 40px; height: 40px; }
 
 .aura-val {
-  position: absolute; bottom: 8px; right: 0px; font-family: 'Press Start 2P', monospace; font-size: 10px;
+  position: absolute; bottom: -8px; right: -12px; font-family: 'Press Start 2P', monospace; font-size: 10px;
   background: rgba(0,0,0,0.8); padding: 2px 3px; border-radius: 2px; border: 1px dashed;
   z-index: 25;
 }
@@ -1124,7 +891,7 @@ onUnmounted(() => {
 
 /* 4. Energy Core - 像素格网格 */
 .energy-core {
-  position: absolute; bottom: 2px; right: 2px; pointer-events: none; z-index: 15;
+  bottom: -10px; right: -10px; pointer-events: none; z-index: 15;
   background: rgba(15,23,42,0.9); padding: 3px; border: 1px solid #334155; border-radius: 2px;
 }
 .ec-grid {
@@ -1140,7 +907,7 @@ onUnmounted(() => {
 .state-dead .ec-pixel.on { background: #6B7280; box-shadow: none; }
 
 .ec-val {
-  position: absolute; top: -20px; right: 0px; font-family: 'Press Start 2P', monospace; font-size: 10px;
+  position: absolute; top: -16px; right: 0px; font-family: 'Press Start 2P', monospace; font-size: 10px;
   background: rgba(15,23,42,0.9); padding: 1px 3px; border-radius: 2px; border: 1px solid #1E293B;
 }
 .state-fresh .ec-val { color: #34D399; }
@@ -1153,7 +920,7 @@ onUnmounted(() => {
 
 /* 5. Status Floater - 侧边进度条 */
 .status-floater {
-  position: absolute; left: 2px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 15;
+  left: -12px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 15;
   display: flex; flex-direction: column; align-items: center; gap: 2px;
 }
 .sf-bar-container {
@@ -1182,4 +949,220 @@ onUnmounted(() => {
 .state-dead .sf-text { color: #9CA3AF; }
 
 @keyframes sf-flash { from { opacity: 0.7; } to { opacity: 1; } }
+
+/* ── 信息面板气泡 ── */
+.info-bubble {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 150px;
+  background: rgba(15, 15, 17, 0.96);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 12px;
+  padding: 10px 12px;
+  z-index: 100;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 12px rgba(59, 130, 246, 0.15);
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
+  max-height: calc(100% - 10px);
+  overflow: hidden;
+}
+
+/* 浅色主题 */
+.info-bubble[data-theme="light"] {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(59, 130, 246, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 12px rgba(59, 130, 246, 0.1);
+}
+
+.info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.info-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.info-time {
+  font-size: 9px;
+  font-weight: 500;
+  color: #52525b;
+  font-family: ui-monospace, monospace;
+}
+
+.info-bubble[data-theme="light"] .info-time {
+  color: #737373;
+}
+
+.info-countdown {
+  font-size: 8px;
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.info-bubble[data-theme="light"] .info-countdown {
+  color: #2563eb;
+}
+
+.info-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.info-btn {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #71717a;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.info-bubble[data-theme="light"] .info-btn {
+  color: #6b7280;
+}
+
+.info-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #d4d4d8;
+}
+
+.info-bubble[data-theme="light"] .info-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #374151;
+}
+
+.info-btn.close:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.info-bubble[data-theme="light"] .info-btn.close:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.info-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.spinning {
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.info-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px;
+  margin-bottom: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 6px;
+  color: #fca5a5;
+  font-size: 9px;
+}
+
+.info-bubble[data-theme="light"] .info-error {
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+}
+
+.info-data {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.info-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.info-label {
+  font-size: 9px;
+  font-weight: 500;
+  color: #71717a;
+}
+
+.info-bubble[data-theme="light"] .info-label {
+  color: #6b7280;
+}
+
+.info-reset {
+  font-size: 8px;
+  color: #52525b;
+}
+
+.info-bubble[data-theme="light"] .info-reset {
+  color: #9ca3af;
+}
+
+.info-val {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.info-bar {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.info-bubble[data-theme="light"] .info-bar {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+/* ── 面板滑入动画 ── */
+.panel-slide-enter-active,
+.panel-slide-leave-active {
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.panel-slide-enter-from,
+.panel-slide-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.9);
+}
+
+/* ── 气泡淡入淡出 ── */
+.bubble-fade-enter-active,
+.bubble-fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.bubble-fade-enter-from,
+.bubble-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) scale(0.9);
+}
 </style>

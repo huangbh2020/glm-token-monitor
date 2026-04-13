@@ -13,34 +13,21 @@ const { hasApiKey } = useSettings()
 const timePercent = computed(() => usageData.value.time_percent ?? 0)
 const tokensPercent = computed(() => usageData.value.tokens_percent ?? 0)
 
-// 根据百分比获取进度条颜色类
-function getBarClass(percent: number): string {
-  if (percent >= 96) return 'bar-dead'
-  if (percent >= 81) return 'bar-panic'
-  if (percent >= 61) return 'bar-warning'
-  return 'bar-flow'
+// 根据百分比获取状态颜色
+function getStatusColor(percent: number): string {
+  if (percent >= 96) return '#6B7280'
+  if (percent >= 81) return '#F97316'
+  if (percent >= 61) return '#F59E0B'
+  return '#3B82F6'
 }
 
-// 会员等级
-const membershipLevel = computed(() => {
-  const level = usageData.value.level || 'lite'
-  const levelMap: Record<string, string> = {
-    lite: 'LITE',
-    standard: 'STD',
-    premium: 'PRO',
-    enterprise: 'ENT'
-  }
-  return levelMap[level] || level.toUpperCase()
-})
-
-// 格式化重置时间
+// 格式化重置时间（简化版）
 function formatResetTime(timestamp?: number): string {
   if (!timestamp) return '--'
   const date = new Date(timestamp)
-  return date.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return date.toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit' })
 }
 
-const timeResetTime = computed(() => formatResetTime(usageData.value.time_reset_time))
 const tokensResetTime = computed(() => formatResetTime(usageData.value.tokens_reset_time))
 
 // 工具使用详情
@@ -98,9 +85,7 @@ onMounted(async () => {
   }).catch((err) => {
     console.error('Setup event listener failed:', err)
   })
-
-  // 暴露刷新函数到 window，供 Rust 端通过 eval 直接调用
-  (window as any).__infoPanelRefresh = refreshUsageData
+  ;(window as any).__infoPanelRefresh = refreshUsageData
 })
 
 onUnmounted(() => {
@@ -111,310 +96,213 @@ onUnmounted(() => {
 
 <template>
   <div class="info-panel" :data-theme="currentTheme">
-    <!-- 顶部栏 -->
-    <header class="panel-header">
-      <div class="header-left">
-        <span class="member-badge" :class="`member-${usageData.level || 'lite'}`">{{ membershipLevel }}</span>
-        <span class="panel-title">使用量</span>
+    <!-- 未配置 API - 简约提示 -->
+    <div v-if="!hasApiKey" class="api-notice">
+      <div class="notice-icon">🔑</div>
+      <div class="notice-text">
+        <div class="notice-title">配置 API Key</div>
+        <div class="notice-desc">点击下方按钮开始配置</div>
       </div>
-      <div class="header-right">
-        <span class="update-time">{{ lastUpdateTime || '--:--' }}</span>
-        <button class="icon-btn" @click="refreshUsageData" :disabled="isRefreshing">
-          <svg :class="{ spinning: isRefreshing }" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M23 4v6h-6M1 20v-6h6"/>
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-          </svg>
-        </button>
-        <button class="icon-btn close" @click="closeWindow">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 6L6 18M6 6l12 12"/>
-          </svg>
-        </button>
-      </div>
-    </header>
+      <button class="notice-btn" @click="openSettings">
+        去设置
+      </button>
+    </div>
 
-    <!-- 主内容区 -->
-    <main class="panel-content">
-      <!-- 状态指示器 -->
-      <!-- <div class="status-bar" :class="`status-${petState.toLowerCase()}`">
-        <div class="status-dot"></div>
-        <span class="status-text">{{ petState.toUpperCase() }}</span>
-      </div> -->
-
-      <!-- 核心指标网格 -->
-      <div class="metrics-grid">
-        <!-- 5小时Token -->
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">5小时Token</span>
-            <span class="metric-value">{{ 100 - tokensPercent }}%</span>
-          </div>
-          <div class="metric-bar-container">
-            <div class="metric-bar" :class="getBarClass(tokensPercent)" :style="{ width: tokensPercent + '%' }"></div>
-          </div>
-          <div class="metric-footer">
-            <span class="metric-used">已用 {{ tokensPercent }}%</span>
-            <span class="metric-reset">下次刷新：{{ tokensResetTime }}</span>
-          </div>
+    <!-- 已配置 API - 紧凑数据展示 -->
+    <template v-else>
+      <!-- 顶部操作栏 -->
+      <div class="top-bar">
+        <span class="time-badge">{{ lastUpdateTime || '--:--' }}</span>
+        <div class="actions">
+          <button class="action-btn" @click="refreshUsageData" :disabled="isRefreshing">
+            <svg :class="{ spinning: isRefreshing }" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M23 4v6h-6M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+          </button>
+          <button class="action-btn close" @click="closeWindow">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
         </div>
-
-        <!-- 月度额度 -->
-        <div class="metric-card clickable" :class="{ expanded: isMonthlyExpanded }" @click="isMonthlyExpanded = !isMonthlyExpanded">
-          <div class="metric-header">
-            <div class="metric-label-row">
-              <span class="metric-label">MCP额度</span>
-              <svg class="expand-icon" :class="{ rotated: isMonthlyExpanded }" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
-            </div>
-            <span class="metric-value">{{ timePercent }}%</span>
-          </div>
-          <div class="metric-bar-container">
-            <div class="metric-bar" :class="getBarClass(timePercent)" :style="{ width: timePercent + '%' }"></div>
-          </div>
-          <div class="metric-footer">
-            <span class="metric-used">已用 {{ timePercent }}%</span>
-            <span class="metric-reset">下次刷新：{{ timeResetTime }}</span>
-          </div>
-          <!-- 展开的详情 -->
-          <div class="metric-details" v-if="isMonthlyExpanded && usageDetails.length > 0">
-            <div class="details-list">
-              <div v-for="detail in usageDetails" :key="detail.model_code" class="detail-row">
-                <span class="detail-name">{{ detail.model_code }}</span>
-                <span class="detail-usage">{{ detail.usage }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 未配置 API 提示 -->
-      <div v-if="!hasApiKey" class="api-config-notice">
-        <div class="notice-icon">🔑</div>
-        <div class="notice-content">
-          <div class="notice-title">需要配置 API Key</div>
-          <div class="notice-desc">请先配置 API Key 才能查看使用量</div>
-        </div>
-        <button class="notice-btn" @click="openSettings">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 15l5-5m0 0l-5 5m5-5H9"/>
-          </svg>
-          去设置
-        </button>
       </div>
 
       <!-- 错误提示 -->
-      <div v-else-if="fetchError" class="error-bar">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <div v-if="fetchError" class="error-tip">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/>
           <path d="M12 8v4M12 16h.01"/>
         </svg>
-        <span>{{ fetchError }}</span>
+        <span>{{ fetchError.slice(0, 20) }}</span>
       </div>
-    </main>
+
+      <!-- 数据区域 -->
+      <div class="data-area">
+        <!-- 5小时 Token -->
+        <div class="stat-row">
+          <div class="stat-info">
+            <span class="stat-label">5h Token</span>
+            <span class="stat-value" :style="{ color: getStatusColor(tokensPercent) }">{{ 100 - tokensPercent }}%</span>
+          </div>
+          <div class="stat-bar">
+            <div class="bar-fill" :style="{ width: tokensPercent + '%', background: getStatusColor(tokensPercent) }"></div>
+          </div>
+          <span class="stat-hint">重置 {{ tokensResetTime }}</span>
+        </div>
+
+        <!-- MCP 额度 -->
+        <div class="stat-row" :class="{ expanded: isMonthlyExpanded }" @click="isMonthlyExpanded = !isMonthlyExpanded">
+          <div class="stat-info">
+            <span class="stat-label">MCP额度</span>
+            <span class="stat-value" :style="{ color: getStatusColor(timePercent) }">{{ 100 - timePercent }}%</span>
+          </div>
+          <div class="stat-bar">
+            <div class="bar-fill" :style="{ width: timePercent + '%', background: getStatusColor(timePercent) }"></div>
+          </div>
+          <div class="stat-expand">
+            <span class="stat-hint">已用 {{ timePercent }}%</span>
+            <svg class="expand-arrow" :class="{ rotated: isMonthlyExpanded }" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+          <!-- 展开详情 -->
+          <div v-if="isMonthlyExpanded && usageDetails.length > 0" class="details-list">
+            <div v-for="detail in usageDetails" :key="detail.model_code" class="detail-item">
+              <span class="detail-name">{{ detail.model_code }}</span>
+              <span class="detail-val">{{ detail.usage }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
-
-/* ── 基础容器 ── */
+/* ── 基础容器 - 椭圆对话框风格 ── */
 .info-panel {
   width: 100vw;
   height: 100vh;
-  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
-  background: linear-gradient(180deg, #0d0d0f 0%, #0a0a0b 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: rgba(15, 15, 17, 0.92);
   color: #e4e4e7;
   display: flex;
   flex-direction: column;
+  border-radius: 16px;
   overflow: hidden;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* ── 浅色主题 ── */
 .info-panel[data-theme="light"] {
-  background: linear-gradient(180deg, #fafaf9 0%, #f5f5f4 100%);
+  background: rgba(255, 255, 255, 0.95);
   color: #1c1c1e;
+  border-color: rgba(0, 0, 0, 0.06);
 }
 
-.info-panel[data-theme="light"] .panel-header {
-  background: #ffffff;
-  border-bottom-color: #e5e5e5;
+/* ── API 配置提示 ── */
+.api-notice {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 20px;
+  text-align: center;
 }
 
-.info-panel[data-theme="light"] .panel-title {
-  color: #52525b;
+.notice-icon {
+  font-size: 36px;
+  animation: float 2s ease-in-out infinite;
 }
 
-.info-panel[data-theme="light"] .update-time {
-  color: #a3a3a3;
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
-.info-panel[data-theme="light"] .icon-btn {
-  color: #737373;
+.notice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.info-panel[data-theme="light"] .icon-btn:hover {
-  background: #f5f5f4;
-  color: #404040;
+.notice-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #60a5fa;
 }
 
-.info-panel[data-theme="light"] .icon-btn.close:hover {
-  background: #fef2f2;
-  color: #ef4444;
+.info-panel[data-theme="light"] .notice-title {
+  color: #3b82f6;
 }
 
-.info-panel[data-theme="light"] .panel-content::-webkit-scrollbar-thumb {
-  background: #d4d4d8;
+.notice-desc {
+  font-size: 11px;
+  color: #71717a;
 }
 
-.info-panel[data-theme="light"] .metric-card {
-  background: #ffffff;
-  border-color: #e5e5e5;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+.notice-btn {
+  margin-top: 8px;
+  padding: 10px 28px;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 20px;
+  color: #60a5fa;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.info-panel[data-theme="light"] .metric-card.clickable:hover {
-  border-color: #d4d4d8;
+.info-panel[data-theme="light"] .notice-btn {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
 }
 
-.info-panel[data-theme="light"] .expand-icon {
-  color: #a3a3a3;
+.notice-btn:hover {
+  background: rgba(59, 130, 246, 0.25);
+  transform: translateY(-1px);
 }
 
-.info-panel[data-theme="light"] .metric-details {
-  border-top-color: #f0f0f0;
-}
-
-.info-panel[data-theme="light"] .detail-row {
-  background: #fafaf9;
-  border-color: #e5e5e5;
-}
-
-.info-panel[data-theme="light"] .detail-name {
-  color: #52525b;
-}
-
-.info-panel[data-theme="light"] .detail-usage {
-  color: #1c1c1e;
-}
-
-.info-panel[data-theme="light"] .metric-label {
-  color: #737373;
-}
-
-.info-panel[data-theme="light"] .metric-value {
-  color: #171717;
-}
-
-.info-panel[data-theme="light"] .metric-bar-container {
-  background: #f0f0f0;
-}
-
-.info-panel[data-theme="light"] .metric-used {
-  color: #52525b;
-}
-
-.info-panel[data-theme="light"] .metric-reset {
-  color: #a3a3a3;
-}
-
-.info-panel[data-theme="light"] .error-bar {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #dc2626;
-}
-
-/* ── 顶部栏 ── */
-.panel-header {
+/* ── 顶部操作栏 ── */
+.top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
-  background: rgba(17, 17, 19, 0.8);
-  backdrop-filter: blur(10px);
+  padding: 10px 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  flex-shrink: 0;
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.info-panel[data-theme="light"] .top-bar {
+  border-bottom-color: rgba(0, 0, 0, 0.05);
 }
 
-.member-badge {
-  font-size: 8px;
-  font-weight: 700;
-  padding: 4px 8px;
-  border-radius: 4px;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-}
-
-.member-lite {
-  background: linear-gradient(135deg, #27272a 0%, #1f1f22 100%);
-  color: #a1a1aa;
-  border: 1px solid #3f3f46;
-}
-.member-standard {
-  background: linear-gradient(135deg, #1e3a5f 0%, #1a3454 100%);
-  color: #60a5fa;
-  border: 1px solid #2563eb;
-}
-.member-premium {
-  background: linear-gradient(135deg, #3f3f46 0%, #333338 100%);
-  color: #f4f4f5;
-  border: 1px solid #52525b;
-}
-.member-enterprise {
-  background: linear-gradient(135deg, #422006 0%, #361a05 100%);
-  color: #fbbf24;
-  border: 1px solid #92400e;
-}
-
-.info-panel[data-theme="light"] .member-lite {
-  background: #f5f5f4;
-  color: #737373;
-  border-color: #d4d4d4;
-}
-.info-panel[data-theme="light"] .member-standard {
-  background: #eff6ff;
-  color: #3b82f6;
-  border-color: #bfdbfe;
-}
-.info-panel[data-theme="light"] .member-premium {
-  background: #fafaf9;
-  color: #1c1c1e;
-  border-color: #e5e5e5;
-}
-.info-panel[data-theme="light"] .member-enterprise {
-  background: #fef3c7;
-  color: #d97706;
-  border-color: #fcd34d;
-}
-
-.panel-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: #8a8a8e;
-  letter-spacing: 0.5px;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.update-time {
+.time-badge {
   font-size: 10px;
-  color: #52525b;
   font-weight: 500;
+  color: #52525b;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
 }
 
-.icon-btn {
-  width: 28px;
-  height: 28px;
+.info-panel[data-theme="light"] .time-badge {
+  background: rgba(0, 0, 0, 0.04);
+  color: #737373;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+.action-btn {
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -423,329 +311,199 @@ onUnmounted(() => {
   color: #71717a;
   cursor: pointer;
   border-radius: 6px;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
-.icon-btn:hover {
+.action-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #d4d4d8;
 }
 
-.icon-btn.close:hover {
+.info-panel[data-theme="light"] .action-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: #404040;
+}
+
+.action-btn.close:hover {
   background: rgba(239, 68, 68, 0.15);
   color: #f87171;
 }
 
-.icon-btn:disabled {
+.action-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
 .spinning {
-  animation: spin 0.8s linear infinite;
+  animation: spin 0.7s linear infinite;
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-/* ── 内容区 ── */
-.panel-content {
+/* ── 错误提示 ── */
+.error-tip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  margin: 8px 14px;
+  background: rgba(239, 68, 68, 0.12);
+  border-radius: 10px;
+  color: #fca5a5;
+  font-size: 10px;
+}
+
+.info-panel[data-theme="light"] .error-tip {
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+}
+
+/* ── 数据区域 ── */
+.data-area {
   flex: 1;
-  overflow-y: auto;
-  padding: 12px 0;
+  padding: 10px 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.panel-content::-webkit-scrollbar {
-  width: 3px;
-}
-
-.panel-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.panel-content::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 3px;
-}
-
-/* ── 指标网格 ── */
-.metrics-grid {
+.stat-row {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 0 12px;
+  transition: all 0.2s ease;
 }
 
-.metric-card {
-  background: rgba(24, 24, 27, 0.6);
-  border: 1px solid rgba(63, 63, 70, 0.3);
-  border-radius: 12px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  transition: all 0.25s ease;
+.info-panel[data-theme="light"] .stat-row {
+  background: rgba(0, 0, 0, 0.02);
 }
 
-.metric-card.clickable {
+.stat-row.expanded {
   cursor: pointer;
 }
 
-.metric-card.clickable:hover {
-  border-color: rgba(63, 63, 70, 0.5);
+.stat-row.expanded:hover {
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.metric-card.clickable.expanded {
-  border-color: rgba(63, 63, 70, 0.5);
+.info-panel[data-theme="light"] .stat-row.expanded:hover {
+  background: rgba(0, 0, 0, 0.04);
 }
 
-.metric-label-row {
+.stat-info {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
 }
 
-.expand-icon {
+.stat-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #71717a;
+  letter-spacing: 0.3px;
+}
+
+.info-panel[data-theme="light"] .stat-label {
+  color: #6b7280;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.stat-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.info-panel[data-theme="light"] .stat-bar {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.stat-hint {
+  font-size: 9px;
   color: #52525b;
-  transition: transform 0.25s ease;
 }
 
-.expand-icon.rotated {
+.info-panel[data-theme="light"] .stat-hint {
+  color: #9ca3af;
+}
+
+.stat-expand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.expand-arrow {
+  color: #52525b;
+  transition: transform 0.2s ease;
+}
+
+.expand-arrow.rotated {
   transform: rotate(180deg);
 }
 
-.metric-details {
-  margin-top: 4px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(63, 63, 70, 0.3);
-}
-
+/* ── 展开详情 ── */
 .details-list {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.detail-row {
+.info-panel[data-theme="light"] .details-list {
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
+.detail-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: rgba(10, 10, 11, 0.5);
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 6px;
-  border: 1px solid rgba(24, 24, 27, 0.8);
-  transition: background 0.2s;
 }
 
-.detail-row:hover {
-  background: rgba(24, 24, 27, 0.5);
+.info-panel[data-theme="light"] .detail-item {
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .detail-name {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 500;
-  color: #a1a1aa;
+  color: #71717a;
 }
 
-.detail-usage {
-  font-size: 10px;
+.info-panel[data-theme="light"] .detail-name {
+  color: #6b7280;
+}
+
+.detail-val {
+  font-size: 9px;
   font-weight: 600;
   color: #e4e4e7;
 }
 
-.metric-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.metric-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: #71717a;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-}
-
-.metric-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: #f4f4f5;
-  letter-spacing: -0.5px;
-}
-
-.metric-bar-container {
-  height: 6px;
-  background: rgba(39, 39, 42, 0.8);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.metric-bar {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s ease;
-}
-
-.bar-flow {
-  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
-  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
-}
-.bar-warning {
-  background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
-}
-.bar-panic {
-  background: linear-gradient(90deg, #ef4444 0%, #f87171 100%);
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
-}
-.bar-dead {
-  background: linear-gradient(90deg, #52525b 0%, #71717a 100%);
-}
-
-.metric-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.metric-used {
-  font-size: 9px;
-  color: #71717a;
-  font-weight: 500;
-}
-
-.metric-reset {
-  font-size: 9px;
-  color: #52525b;
-}
-
-/* ── 错误提示 ── */
-.error-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  margin: 0 12px;
-  background: rgba(127, 29, 29, 0.3);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 8px;
-  color: #fca5a5;
-  font-size: 10px;
-}
-
-.error-bar svg {
-  flex-shrink: 0;
-}
-
-/* ── API 配置提示 ── */
-.api-config-notice {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  margin: 0 12px;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  border-radius: 12px;
-  animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.notice-icon {
-  font-size: 32px;
-  flex-shrink: 0;
-  animation: bounce 2s ease-in-out infinite;
-}
-
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-5px);
-  }
-}
-
-.notice-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.notice-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: #60a5fa;
-}
-
-.notice-desc {
-  font-size: 10px;
-  color: #a1a1aa;
-}
-
-.notice-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: rgba(59, 130, 246, 0.2);
-  border: 1px solid rgba(59, 130, 246, 0.4);
-  border-radius: 8px;
-  color: #60a5fa;
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.notice-btn:hover {
-  background: rgba(59, 130, 246, 0.3);
-  border-color: rgba(59, 130, 246, 0.6);
-  transform: translateY(-1px);
-}
-
-.notice-btn:active {
-  transform: translateY(0);
-}
-
-.info-panel[data-theme="light"] .api-config-notice {
-  background: rgba(59, 130, 246, 0.08);
-  border-color: rgba(59, 130, 246, 0.2);
-}
-
-.info-panel[data-theme="light"] .notice-title {
-  color: #3b82f6;
-}
-
-.info-panel[data-theme="light"] .notice-desc {
-  color: #737373;
-}
-
-.info-panel[data-theme="light"] .notice-btn {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.3);
-  color: #3b82f6;
-}
-
-.info-panel[data-theme="light"] .notice-btn:hover {
-  background: rgba(59, 130, 246, 0.25);
+.info-panel[data-theme="light"] .detail-val {
+  color: #1c1c1e;
 }
 </style>

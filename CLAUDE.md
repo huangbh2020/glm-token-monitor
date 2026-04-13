@@ -26,8 +26,8 @@ npm run build
 cd src-tauri && cargo build
 
 # 仅运行已编译的二进制文件
-./src-tauri/target/debug/glm-token-monitor.exe  # Windows
-./src-tauri/target/debug/glm-token-monitor      # macOS/Linux
+./src-tauri/target/debug/plan-guard.exe  # Windows
+./src-tauri/target/debug/plan-guard      # macOS/Linux
 
 # 运行 Rust 测试
 cd src-tauri && cargo test
@@ -167,7 +167,7 @@ UsageData {
 ```
 
 ### 配置管理
-- 配置文件位置：`~/.config/glm-token-monitor/config.json` (Linux) 或 `%APPDATA%\glm-token-monitor\config.json` (Windows)
+- 配置文件位置：`~/.config/plan-guard/config.json` (Linux) 或 `%APPDATA%\plan-guard\config.json` (Windows)
 - 轮询间隔：从 `config.polling_config.interval_minutes` 读取（默认 1 分钟）
 - 所有配置修改通过 `settings_commands.rs` 的 Command 接口
 - 配置变更会触发 Tauri 事件，Vue 端自动响应
