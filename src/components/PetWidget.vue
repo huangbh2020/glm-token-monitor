@@ -49,6 +49,14 @@ const petComponents = {
 // 双指标数据
 const timePercent = computed(() => usageData.value.time_percent ?? 0)
 const tokensPercent = computed(() => usageData.value.tokens_percent ?? 0)
+const weeklyTokensPercent = computed(() => usageData.value.weekly_tokens_percent ?? 0)
+
+// 检查是否有周限制数据（unit=6）
+const hasWeeklyLimit = computed(() => {
+  const hasTime = usageData.value.weekly_tokens_reset_time !== undefined && usageData.value.weekly_tokens_reset_time !== null
+  console.log('[DEBUG] hasWeeklyLimit:', hasTime, 'weekly_tokens_reset_time:', usageData.value.weekly_tokens_reset_time, 'weekly_tokens_percent:', usageData.value.weekly_tokens_percent)
+  return hasTime
+})
 
 // 格式化重置时间
 function formatResetTime(timestamp?: number): string {
@@ -63,6 +71,7 @@ function formatResetTime(timestamp?: number): string {
 }
 
 const tokensResetTime = computed(() => formatResetTime(usageData.value.tokens_reset_time))
+const weeklyTokensResetTime = computed(() => formatResetTime(usageData.value.weekly_tokens_reset_time))
 const timeResetTime = computed(() => formatResetTime(usageData.value.time_reset_time))
 
 // 刷新状态
@@ -207,7 +216,7 @@ watch([hasApiKey, showInfoPanel, displayMode], async ([hasKey, showPanel, mode])
       await invoke('resize_main_window', { width: 160, height: 180 })
     } else if (showPanel) {
       // 显示信息面板（宠物隐藏，面板居中）
-      await invoke('resize_main_window', { width: 160, height: 160 })
+      await invoke('resize_main_window', { width: 160, height: 240 })
     } else if (mode && mode !== 'none') {
       // 有 token 显示模式，需要更大空间
       await invoke('resize_main_window', { width: 120, height: 120 })
@@ -391,6 +400,17 @@ onUnmounted(() => {
               <div class="bar-fill" :style="{ width: tokensPercent + '%', background: getStatusColor(tokensPercent) }"></div>
             </div>
             <span class="info-reset">刷新: {{ tokensResetTime }}</span>
+          </div>
+          <!-- 周限制 -->
+          <div v-if="hasWeeklyLimit" class="info-row">
+            <div class="info-row-header">
+              <span class="info-label">周限制</span>
+              <span class="info-val" :style="{ color: getStatusColor(weeklyTokensPercent) }">{{ 100 - weeklyTokensPercent }}%</span>
+            </div>
+            <div class="info-bar">
+              <div class="bar-fill" :style="{ width: weeklyTokensPercent + '%', background: getStatusColor(weeklyTokensPercent) }"></div>
+            </div>
+            <span class="info-reset">刷新: {{ weeklyTokensResetTime }}</span>
           </div>
           <!-- MCP 额度 -->
           <div class="info-row">
@@ -990,7 +1010,7 @@ onUnmounted(() => {
 }
 
 .info-time {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 500;
   color: #52525b;
   font-family: ui-monospace, monospace;
@@ -1001,7 +1021,7 @@ onUnmounted(() => {
 }
 
 .info-countdown {
-  font-size: 8px;
+  font-size: 10px;
   color: #3b82f6;
   font-weight: 500;
 }
@@ -1075,7 +1095,7 @@ onUnmounted(() => {
   background: rgba(239, 68, 68, 0.1);
   border-radius: 6px;
   color: #fca5a5;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .info-bubble[data-theme="light"] .info-error {
@@ -1102,7 +1122,7 @@ onUnmounted(() => {
 }
 
 .info-label {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 500;
   color: #71717a;
 }
@@ -1112,7 +1132,7 @@ onUnmounted(() => {
 }
 
 .info-reset {
-  font-size: 8px;
+  font-size: 10px;
   color: #52525b;
 }
 
@@ -1121,7 +1141,7 @@ onUnmounted(() => {
 }
 
 .info-val {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
 }
 

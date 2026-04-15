@@ -8,8 +8,10 @@ export function useTauriEvents() {
     total: 100,
     time_percent: 0,
     tokens_percent: 0,
+    weekly_tokens_percent: 0,
     time_remaining: 0,
     tokens_reset_time: undefined,
+    weekly_tokens_reset_time: undefined,
     time_reset_time: undefined,
     level: '',
     usage_details: []

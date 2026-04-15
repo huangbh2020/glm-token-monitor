@@ -37,7 +37,7 @@
         "label": "info-panel",
         "title": "用量详情",
         "width": 280,
-        "height": 320,
+        "height": 400,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,

@@ -12,12 +12,16 @@ pub struct UsageData {
     pub total: u32,
     /// 月 MCP 额度百分比（TIME_LIMIT.percentage）
     pub time_percent: u32,
-    /// 5h Token 额度百分比（TOKENS_LIMIT.percentage）
+    /// 5h Token 额度百分比（TOKENS_LIMIT unit=3 percentage）
     pub tokens_percent: u32,
+    /// 周 Token 额度百分比（TOKENS_LIMIT unit=6 percentage）
+    pub weekly_tokens_percent: u32,
     /// 月 MCP 剩余次数
     pub time_remaining: Option<u32>,
     /// 5h Token 下次重置时间（时间戳，毫秒）
     pub tokens_reset_time: Option<i64>,
+    /// 周 Token 下次重置时间（时间戳，毫秒）
+    pub weekly_tokens_reset_time: Option<i64>,
     /// 月度额度下次重置时间（时间戳，毫秒）
     pub time_reset_time: Option<i64>,
     /// 会员等级
@@ -61,6 +65,7 @@ pub struct ApiData {
 pub struct LimitItem {
     #[serde(rename = "type")]
     pub limit_type: String,
+    pub unit: Option<u32>,
     pub percentage: Option<u32>,
     pub usage: Option<u32>,
     pub number: Option<u32>,

@@ -57,9 +57,12 @@ pub async fn fetch_usage(app: &AppHandle) -> Result<UsageData, String> {
     let mut time_reset_time: Option<i64> = None;
     let mut tokens_percent: u32 = 0;
     let mut tokens_reset_time: Option<i64> = None;
+    let mut weekly_tokens_percent: u32 = 0;
+    let mut weekly_tokens_reset_time: Option<i64> = None;
     let mut usage_details: Vec<crate::events::UsageDetailData> = Vec::new();
 
     for item in &data.limits {
+        let unit = item.unit.unwrap_or(0);
         match item.limit_type.as_str() {
             "TIME_LIMIT" => {
                 time_percent = item.percentage.unwrap_or(0);
@@ -76,8 +79,18 @@ pub async fn fetch_usage(app: &AppHandle) -> Result<UsageData, String> {
                 }
             }
             "TOKENS_LIMIT" => {
-                tokens_percent = item.percentage.unwrap_or(0);
-                tokens_reset_time = item.next_reset_time;
+                match unit {
+                    6 => {
+                        // 周 Token 限制
+                        weekly_tokens_percent = item.percentage.unwrap_or(0);
+                        weekly_tokens_reset_time = item.next_reset_time;
+                    }
+                    _ => {
+                        // 5h Token 限制（unit=3 或其他）
+                        tokens_percent = item.percentage.unwrap_or(0);
+                        tokens_reset_time = item.next_reset_time;
+                    }
+                }
             }
             _ => {}
         }
@@ -89,8 +102,10 @@ pub async fn fetch_usage(app: &AppHandle) -> Result<UsageData, String> {
         total: 100,
         time_percent,
         tokens_percent,
+        weekly_tokens_percent,
         time_remaining,
         tokens_reset_time,
+        weekly_tokens_reset_time,
         time_reset_time,
         level: data.level,
         usage_details,

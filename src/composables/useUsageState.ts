@@ -7,8 +7,10 @@ export interface UsageData {
   total: number
   time_percent: number       // 月MCP额度 %
   tokens_percent: number     // 5h Token额度 %
+  weekly_tokens_percent: number // 周Token额度 %
   time_remaining?: number    // 月MCP剩余次数（可能为null）
   tokens_reset_time?: number  // 5h Token下次重置时间（时间戳毫秒）
+  weekly_tokens_reset_time?: number // 周Token下次重置时间（时间戳毫秒）
   time_reset_time?: number    // 月度额度下次重置时间（时间戳毫秒）
   level?: string             // 会员等级
   usage_details?: UsageDetail[] // 工具使用详情

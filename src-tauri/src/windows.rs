@@ -47,7 +47,7 @@ pub async fn open_info_panel(
 
     // 计算副窗口尺寸和间距
     let panel_width = 280.0;
-    let panel_height = 320.0;
+    let panel_height = 400.0;
     let gap = 8.0;
 
     // 获取主显示器信息

@@ -12,6 +12,7 @@ const { hasApiKey } = useSettings()
 // 双指标数据
 const timePercent = computed(() => usageData.value.time_percent ?? 0)
 const tokensPercent = computed(() => usageData.value.tokens_percent ?? 0)
+const weeklyTokensPercent = computed(() => usageData.value.weekly_tokens_percent ?? 0)
 
 // 根据百分比获取状态颜色
 function getStatusColor(percent: number): string {
@@ -29,6 +30,7 @@ function formatResetTime(timestamp?: number): string {
 }
 
 const tokensResetTime = computed(() => formatResetTime(usageData.value.tokens_reset_time))
+const weeklyTokensResetTime = computed(() => formatResetTime(usageData.value.weekly_tokens_reset_time))
 
 // 工具使用详情
 const usageDetails = computed(() => usageData.value.usage_details || [])
@@ -149,6 +151,18 @@ onUnmounted(() => {
             <div class="bar-fill" :style="{ width: tokensPercent + '%', background: getStatusColor(tokensPercent) }"></div>
           </div>
           <span class="stat-hint">重置 {{ tokensResetTime }}</span>
+        </div>
+
+        <!-- 周限制 -->
+        <div class="stat-row">
+          <div class="stat-info">
+            <span class="stat-label">周限制</span>
+            <span class="stat-value" :style="{ color: getStatusColor(weeklyTokensPercent) }">{{ 100 - weeklyTokensPercent }}%</span>
+          </div>
+          <div class="stat-bar">
+            <div class="bar-fill" :style="{ width: weeklyTokensPercent + '%', background: getStatusColor(weeklyTokensPercent) }"></div>
+          </div>
+          <span class="stat-hint">重置 {{ weeklyTokensResetTime }}</span>
         </div>
 
         <!-- MCP 额度 -->
