@@ -289,7 +289,6 @@ onUnmounted(() => {
 
 <template>
   <div class="pet-widget" :class="[`pet-${petState.toLowerCase()}`, { 'show-panel': showInfoPanel }]"
-    data-tauri-drag-region
     @mousedown="startDrag"
     @click="handleClick"
     @dblclick.prevent="handleDblClick">
@@ -444,7 +443,6 @@ onUnmounted(() => {
   pointer-events: auto;
   border-radius: 8px;
   overflow: visible;
-  -webkit-app-region: drag;
   padding-top: 8px;
 }
 .pet-widget:active { cursor: pointer; }

@@ -35,6 +35,15 @@ pub fn run() {
                 }
             }
 
+            // macOS 平台：透明无边框窗口（拖动通过 JS startDragging 实现）
+            #[cfg(target_os = "macos")]
+            {
+                use tauri::Manager;
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_decorations(false);
+                }
+            }
+
             // 初始化配置（确保配置文件存在）
             if let Err(e) = config::load_config(app.handle()) {
                 eprintln!("Failed to initialize config: {}", e);
