@@ -35,10 +35,12 @@ pub fn run() {
                 }
             }
 
-            // macOS 平台：透明无边框窗口（拖动通过 JS startDragging 实现）
+            // macOS 平台：透明无边框窗口，不在 Dock 栏显示图标
             #[cfg(target_os = "macos")]
             {
                 use tauri::Manager;
+                // 隐藏 Dock 图标（Accessory 模式：仅在系统托盘显示）
+                app.set_activation_policy(tauri::ActivationPolicy::Accessory);
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.set_decorations(false);
                 }
