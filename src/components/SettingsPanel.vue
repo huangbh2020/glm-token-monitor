@@ -319,7 +319,8 @@ onUnmounted(() => {
             <label
               v-for="pet in [
                 { value: 'spirit', label: '果冻精灵', desc: 'Jelly Spirit' },
-                { value: 'ghost', label: '像素幽灵', desc: 'Pixel Ghost' }
+                { value: 'ghost', label: '像素幽灵', desc: 'Pixel Ghost' },
+                { value: 'polar', label: '北极熊', desc: 'Polar Bear' }
               ]"
               :key="pet.value"
               class="pet-option"

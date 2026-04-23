@@ -14,6 +14,7 @@ import DogWalk from './pets/DogWalk.vue'
 import DogBeg from './pets/DogBeg.vue'
 import JellySpirit from './pets/JellySpirit.vue'
 import PixelGhost from './pets/PixelGhost.vue'
+import PolarBear from './pets/PolarBear.vue'
 
 const { displayMode } = useDisplayMode()
 const { loadConfig, setupConfigListener, config, basicConfig, hasApiKey } = useSettings()
@@ -289,13 +290,15 @@ onUnmounted(() => {
 
 <template>
   <div class="pet-widget" :class="[`pet-${petState.toLowerCase()}`, { 'show-panel': showInfoPanel }]"
-    @mousedown="startDrag"
+  data-tauri-drag-region  
+  @mousedown="startDrag"
     @click="handleClick"
     @dblclick.prevent="handleDblClick">
     <!-- 宠物 -->
     <div class="pet-container" :class="{ hidden: showInfoPanel && hasApiKey }">
       <JellySpirit v-if="petType === 'spirit'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="80" :height="80" />
       <PixelGhost v-else-if="petType === 'ghost'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="80" :height="80" />
+      <PolarBear v-else-if="petType === 'polar'" :state="petState" :width="80" :height="80" />
       <CatGifViewer v-else-if="currentAction.startsWith('cat-')" :action="currentAction" :width="80" :height="80" />
       <component v-else :is="petComponents[currentAction as keyof typeof petComponents]" :key="currentAction" />
 
@@ -443,6 +446,7 @@ onUnmounted(() => {
   pointer-events: auto;
   border-radius: 8px;
   overflow: visible;
+  -webkit-app-region: drag;
   padding-top: 8px;
 }
 .pet-widget:active { cursor: pointer; }
