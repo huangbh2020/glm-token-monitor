@@ -27,7 +27,7 @@ export interface PollingConfig {
 }
 
 // 宠物类型
-export type PetType = 'spirit' | 'ghost' | 'polar' | 'cat' | 'dog'
+export type PetType = 'spirit' | 'ghost' | 'polar' | 'cat' | 'dog' | 'lottie-dog'
 
 // 猫咪动作（已废弃，保留以兼容）
 export type CatAction = 'cat-sleep' | 'cat-play' | 'cat-stare' | 'cat-stretch'
@@ -54,4 +54,18 @@ export interface AppConfig {
   display_config: DisplayConfig
   pet_config: PetConfig
   basic_config: BasicConfig
+}
+
+export interface ClaudeApiProfile {
+  id: string
+  name: string
+  inference_gateway_base_url: string
+  inference_gateway_api_key: string
+  inference_models: string[]
+}
+
+export interface ProfileStore {
+  profiles: ClaudeApiProfile[]
+  active_profile_id: string | null
+  claude_config_path: string | null
 }

@@ -7,6 +7,7 @@ mod commands;
 mod settings_commands;
 mod tray;
 mod windows;
+mod claude_profile;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -23,6 +24,12 @@ pub fn run() {
             settings_commands::save_config_handler,
             settings_commands::test_api_connection,
             settings_commands::set_auto_start,
+            claude_profile::get_profiles,
+            claude_profile::save_profile_handler,
+            claude_profile::delete_profile_handler,
+            claude_profile::switch_profile_handler,
+            claude_profile::get_claude_config_path_cmd,
+            claude_profile::set_claude_config_path_handler,
         ])
         .setup(|app| {
             // Windows 平台：设置完全透明无边框窗口
@@ -56,6 +63,7 @@ pub fn run() {
             if let Err(e) = tray::create_system_tray(&app_handle) {
                 eprintln!("System tray error: {}", e);
             }
+            tray::setup_tray_menu_handler(app.handle());
 
             // 启动轮询服务
             tauri::async_runtime::spawn(async move {

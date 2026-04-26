@@ -4,7 +4,8 @@ import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useSettings } from '../composables/useSettings'
 import { useTheme } from '../composables/useTheme'
-import type { DisplayMode } from '../types/config'
+import { useClaudeProfiles } from '../composables/useClaudeProfiles'
+import type { DisplayMode, ClaudeApiProfile } from '../types/config'
 
 const {
   config,
@@ -24,8 +25,23 @@ const {
 
 const { currentTheme, setTheme } = useTheme()
 
+const {
+  store: profileStore,
+  isLoading: isProfileLoading,
+  error: profileError,
+  activeProfile,
+  loadProfiles,
+  saveProfile,
+  deleteProfile,
+  switchProfile,
+  getClaudeConfigPath,
+  setClaudeConfigPath,
+  setupProfileListener,
+  createEmptyProfile,
+} = useClaudeProfiles()
+
 // UI 状态
-const activeTab = ref<'basic' | 'models' | 'pet'>('basic')
+const activeTab = ref<'basic' | 'models' | 'pet' | 'claude-api'>('basic')
 const isDragging = ref(false)
 
 const displayModes: { value: DisplayMode; label: string }[] = [
@@ -40,6 +56,51 @@ const displayModes: { value: DisplayMode; label: string }[] = [
 const isTesting = ref(false)
 const editingApiKey = ref<string | null>(null)
 const apiKeyInput = ref('')
+
+// Profile editing state
+const editingProfile = ref<ClaudeApiProfile | null>(null)
+const isCreatingProfile = ref(false)
+const profileModelsInput = ref('')
+const claudeConfigPath = ref('')
+const showDeleteConfirm = ref<string | null>(null)
+
+function startCreateProfile() {
+  editingProfile.value = createEmptyProfile()
+  isCreatingProfile.value = true
+  profileModelsInput.value = ''
+}
+
+function startEditProfile(profile: ClaudeApiProfile) {
+  editingProfile.value = { ...profile }
+  isCreatingProfile.value = false
+  profileModelsInput.value = profile.inference_models.join(', ')
+}
+
+function cancelEditProfile() {
+  editingProfile.value = null
+  isCreatingProfile.value = false
+  profileModelsInput.value = ''
+}
+
+async function saveProfileEdit() {
+  if (!editingProfile.value) return
+  editingProfile.value.inference_models = profileModelsInput.value
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+  await saveProfile(editingProfile.value)
+  editingProfile.value = null
+  isCreatingProfile.value = false
+}
+
+async function handleDeleteProfile(id: string) {
+  await deleteProfile(id)
+  showDeleteConfirm.value = null
+}
+
+async function handleSwitchProfile(id: string) {
+  await switchProfile(id)
+}
 
 // 拖动功能
 async function startDrag(event: MouseEvent) {
@@ -140,6 +201,16 @@ onMounted(async () => {
   await loadConfig()
   await setTheme(config.value.basic_config?.theme || 'dark')
   cleanup = await setupConfigListener()
+  await loadProfiles()
+  try {
+    claudeConfigPath.value = await getClaudeConfigPath()
+  } catch {}
+  const unlistenProfile = await setupProfileListener()
+  const originalCleanup = cleanup
+  cleanup = () => {
+    originalCleanup?.()
+    unlistenProfile()
+  }
 })
 
 onUnmounted(() => {
@@ -169,7 +240,8 @@ onUnmounted(() => {
         v-for="tab in [
           { id: 'basic', label: '基础' },
           { id: 'models', label: '模型' },
-          { id: 'pet', label: '宠物' }
+          { id: 'pet', label: '宠物' },
+          { id: 'claude-api', label: 'API 配置' }
         ]"
         :key="tab.id"
         class="tab-btn"
@@ -320,7 +392,8 @@ onUnmounted(() => {
               v-for="pet in [
                 { value: 'spirit', label: '果冻精灵', desc: 'Jelly Spirit' },
                 { value: 'ghost', label: '像素幽灵', desc: 'Pixel Ghost' },
-                { value: 'polar', label: '北极熊', desc: 'Polar Bear' }
+                { value: 'polar', label: '睡觉猫咪', desc: 'Sleeping Cat' },
+                { value: 'lottie-dog', label: '打字小狗', desc: 'Typing Dog' }
               ]"
               :key="pet.value"
               class="pet-option"
@@ -363,6 +436,110 @@ onUnmounted(() => {
               <span>{{ mode.label }}</span>
             </label>
           </div>
+        </div>
+      </div>
+
+      <!-- API 配置管理 -->
+      <div v-if="activeTab === 'claude-api'" class="settings-section">
+        <!-- 当前激活配置 -->
+        <div v-if="activeProfile" class="setting-item active-profile">
+          <div class="setting-info">
+            <span class="setting-label">当前配置</span>
+            <span class="setting-desc">{{ activeProfile.name }} · {{ activeProfile.inference_gateway_base_url }}</span>
+          </div>
+          <div class="profile-actions">
+            <span class="active-badge">已激活</span>
+            <button class="action-btn reactivate" @click="handleSwitchProfile(activeProfile.id)">重新激活</button>
+          </div>
+        </div>
+
+        <!-- Profile 列表 -->
+        <div class="profiles-list">
+          <div
+            v-for="profile in profileStore.profiles"
+            :key="profile.id"
+            class="profile-card"
+            :class="{ active: profile.id === profileStore.active_profile_id }"
+          >
+            <div class="profile-main">
+              <div class="profile-info">
+                <span class="profile-name">{{ profile.name }}</span>
+                <span class="profile-url">{{ profile.inference_gateway_base_url }}</span>
+                <span class="profile-models">{{ profile.inference_models.join(', ') }}</span>
+              </div>
+              <div class="profile-actions">
+                <button
+                  v-if="profile.id !== profileStore.active_profile_id"
+                  class="action-btn activate"
+                  @click="handleSwitchProfile(profile.id)"
+                >切换</button>
+                <button class="action-btn" @click="startEditProfile(profile)">编辑</button>
+                <button
+                  v-if="!showDeleteConfirm || showDeleteConfirm !== profile.id"
+                  class="action-btn danger"
+                  @click="showDeleteConfirm = profile.id"
+                >删除</button>
+                <template v-else>
+                  <button class="action-btn danger" @click="handleDeleteProfile(profile.id)">确认</button>
+                  <button class="action-btn" @click="showDeleteConfirm = null">取消</button>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 新增按钮 -->
+        <button v-if="!editingProfile" class="action-btn add" @click="startCreateProfile">
+          + 新增配置
+        </button>
+
+        <!-- 编辑/新增表单 -->
+        <div v-if="editingProfile" class="profile-editor">
+          <div class="editor-field">
+            <label>名称</label>
+            <input v-model="editingProfile.name" class="api-key-input" placeholder="例如：智谱 GLM" />
+          </div>
+          <div class="editor-field">
+            <label>Base URL</label>
+            <input v-model="editingProfile.inference_gateway_base_url" class="api-key-input" placeholder="https://open.bigmodel.cn/api/anthropic" />
+          </div>
+          <div class="editor-field">
+            <label>API Key</label>
+            <input v-model="editingProfile.inference_gateway_api_key" class="api-key-input" type="password" placeholder="输入 API Key" />
+          </div>
+          <div class="editor-field">
+            <label>Models（逗号分隔）</label>
+            <input v-model="profileModelsInput" class="api-key-input" placeholder="glm-5.1, glm-4.7" />
+          </div>
+          <div class="editor-actions">
+            <button class="action-btn save" @click="saveProfileEdit">保存</button>
+            <button class="action-btn cancel" @click="cancelEditProfile">取消</button>
+          </div>
+        </div>
+
+        <!-- Claude 配置路径 -->
+        <div class="setting-item full">
+          <div class="setting-info">
+            <span class="setting-label">Claude 配置路径</span>
+            <span class="setting-desc">Claude Code 桌面版配置文件路径</span>
+          </div>
+          <div class="api-key-input-group">
+            <input
+              v-model="claudeConfigPath"
+              class="api-key-input"
+              placeholder="自动探测或手动指定"
+              @change="setClaudeConfigPath(claudeConfigPath)"
+            />
+          </div>
+        </div>
+
+        <!-- 错误提示 -->
+        <div v-if="profileError" class="error-bar">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 8v4M12 16h.01"/>
+          </svg>
+          <span>{{ profileError }}</span>
         </div>
       </div>
 
@@ -1099,5 +1276,192 @@ onUnmounted(() => {
 
 .error-bar svg {
   flex-shrink: 0;
+}
+
+/* ── API 配置标签页 ── */
+.active-profile {
+  background: #111113;
+  border-color: #22c55e;
+}
+.active-badge {
+  font-size: 9px;
+  font-weight: 600;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.profiles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-card {
+  background: #0a0a0b;
+  border: 1px solid #1c1c1e;
+  border-radius: 6px;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+.profile-card.active {
+  border-color: #22c55e;
+}
+
+.profile-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  gap: 12px;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #e4e4e7;
+}
+
+.profile-url {
+  font-size: 9px;
+  color: #52525b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-models {
+  font-size: 8px;
+  color: #3f3f46;
+}
+
+.profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.action-btn.activate {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: #22c55e;
+  color: #22c55e;
+}
+.action-btn.activate:hover {
+  background: #22c55e;
+  color: #ffffff;
+}
+
+.action-btn.reactivate {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: #3b82f6;
+  color: #3b82f6;
+  font-size: 9px;
+  padding: 6px 10px;
+}
+.action-btn.reactivate:hover {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.action-btn.danger {
+  color: #f87171;
+  border-color: #7f1d1d;
+}
+.action-btn.danger:hover {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
+
+.action-btn.add {
+  width: 100%;
+  padding: 12px;
+  background: #111113;
+  border: 1px dashed #27272a;
+  border-radius: 6px;
+  color: #71717a;
+  font-size: 10px;
+  text-align: center;
+}
+.action-btn.add:hover {
+  border-color: #3f3f46;
+  color: #e4e4e7;
+}
+
+.profile-editor {
+  background: #111113;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.editor-field label {
+  font-size: 9px;
+  font-weight: 600;
+  color: #71717a;
+  letter-spacing: 0.5px;
+}
+
+.editor-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* 浅色主题 - API 配置 */
+.settings-panel[data-theme="light"] .active-profile {
+  background: #ffffff;
+  border-color: #22c55e;
+}
+.settings-panel[data-theme="light"] .profile-card {
+  background: #fafaf9;
+  border-color: #e4e4e7;
+}
+.settings-panel[data-theme="light"] .profile-card.active {
+  border-color: #22c55e;
+}
+.settings-panel[data-theme="light"] .profile-name {
+  color: #1c1c1e;
+}
+.settings-panel[data-theme="light"] .profile-url {
+  color: #737373;
+}
+.settings-panel[data-theme="light"] .profile-editor {
+  background: #ffffff;
+  border-color: #e4e4e7;
+}
+.settings-panel[data-theme="light"] .action-btn.add {
+  background: #ffffff;
+  border-color: #e4e4e7;
+  color: #737373;
+}
+.settings-panel[data-theme="light"] .action-btn.reactivate {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: #3b82f6;
+  color: #2563eb;
+}
+.settings-panel[data-theme="light"] .action-btn.reactivate:hover {
+  background: #3b82f6;
+  color: #ffffff;
+}
+.settings-panel[data-theme="light"] .editor-field label {
+  color: #737373;
 }
 </style>

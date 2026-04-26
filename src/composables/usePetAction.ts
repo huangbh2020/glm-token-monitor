@@ -36,6 +36,9 @@ export function usePetAction(initialPet: PetType = 'spirit', interval: number = 
       let actions: string[]
       if (type === 'cat') actions = CAT_ACTIONS
       else if (type === 'dog') actions = DOG_ACTIONS
+      else if (type === 'spirit' || type === 'ghost' || type === 'polar' || type === 'lottie-dog') {
+        actions = SPIRIT_ACTIONS
+      }
       else actions = SPIRIT_ACTIONS
       currentAction.value = actions[0]
       console.log(`[PetAction] Pet changed to: ${type}`)
