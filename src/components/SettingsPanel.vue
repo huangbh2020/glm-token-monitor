@@ -41,7 +41,7 @@ const {
 } = useClaudeProfiles()
 
 // UI 状态
-const activeTab = ref<'basic' | 'models' | 'pet' | 'claude-api'>('basic')
+const activeTab = ref<'basic' | 'models' | 'pet'>('basic')
 const isDragging = ref(false)
 
 const displayModes: { value: DisplayMode; label: string }[] = [
@@ -240,8 +240,7 @@ onUnmounted(() => {
         v-for="tab in [
           { id: 'basic', label: '基础' },
           { id: 'models', label: '模型' },
-          { id: 'pet', label: '宠物' },
-          { id: 'claude-api', label: 'API 配置' }
+          { id: 'pet', label: '宠物' }
         ]"
         :key="tab.id"
         class="tab-btn"
@@ -436,110 +435,6 @@ onUnmounted(() => {
               <span>{{ mode.label }}</span>
             </label>
           </div>
-        </div>
-      </div>
-
-      <!-- API 配置管理 -->
-      <div v-if="activeTab === 'claude-api'" class="settings-section">
-        <!-- 当前激活配置 -->
-        <div v-if="activeProfile" class="setting-item active-profile">
-          <div class="setting-info">
-            <span class="setting-label">当前配置</span>
-            <span class="setting-desc">{{ activeProfile.name }} · {{ activeProfile.inference_gateway_base_url }}</span>
-          </div>
-          <div class="profile-actions">
-            <span class="active-badge">已激活</span>
-            <button class="action-btn reactivate" @click="handleSwitchProfile(activeProfile.id)">重新激活</button>
-          </div>
-        </div>
-
-        <!-- Profile 列表 -->
-        <div class="profiles-list">
-          <div
-            v-for="profile in profileStore.profiles"
-            :key="profile.id"
-            class="profile-card"
-            :class="{ active: profile.id === profileStore.active_profile_id }"
-          >
-            <div class="profile-main">
-              <div class="profile-info">
-                <span class="profile-name">{{ profile.name }}</span>
-                <span class="profile-url">{{ profile.inference_gateway_base_url }}</span>
-                <span class="profile-models">{{ profile.inference_models.join(', ') }}</span>
-              </div>
-              <div class="profile-actions">
-                <button
-                  v-if="profile.id !== profileStore.active_profile_id"
-                  class="action-btn activate"
-                  @click="handleSwitchProfile(profile.id)"
-                >切换</button>
-                <button class="action-btn" @click="startEditProfile(profile)">编辑</button>
-                <button
-                  v-if="!showDeleteConfirm || showDeleteConfirm !== profile.id"
-                  class="action-btn danger"
-                  @click="showDeleteConfirm = profile.id"
-                >删除</button>
-                <template v-else>
-                  <button class="action-btn danger" @click="handleDeleteProfile(profile.id)">确认</button>
-                  <button class="action-btn" @click="showDeleteConfirm = null">取消</button>
-                </template>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 新增按钮 -->
-        <button v-if="!editingProfile" class="action-btn add" @click="startCreateProfile">
-          + 新增配置
-        </button>
-
-        <!-- 编辑/新增表单 -->
-        <div v-if="editingProfile" class="profile-editor">
-          <div class="editor-field">
-            <label>名称</label>
-            <input v-model="editingProfile.name" class="api-key-input" placeholder="例如：智谱 GLM" />
-          </div>
-          <div class="editor-field">
-            <label>Base URL</label>
-            <input v-model="editingProfile.inference_gateway_base_url" class="api-key-input" placeholder="https://open.bigmodel.cn/api/anthropic" />
-          </div>
-          <div class="editor-field">
-            <label>API Key</label>
-            <input v-model="editingProfile.inference_gateway_api_key" class="api-key-input" type="password" placeholder="输入 API Key" />
-          </div>
-          <div class="editor-field">
-            <label>Models（逗号分隔）</label>
-            <input v-model="profileModelsInput" class="api-key-input" placeholder="glm-5.1, glm-4.7" />
-          </div>
-          <div class="editor-actions">
-            <button class="action-btn save" @click="saveProfileEdit">保存</button>
-            <button class="action-btn cancel" @click="cancelEditProfile">取消</button>
-          </div>
-        </div>
-
-        <!-- Claude 配置路径 -->
-        <div class="setting-item full">
-          <div class="setting-info">
-            <span class="setting-label">Claude 配置路径</span>
-            <span class="setting-desc">Claude Code 桌面版配置文件路径</span>
-          </div>
-          <div class="api-key-input-group">
-            <input
-              v-model="claudeConfigPath"
-              class="api-key-input"
-              placeholder="自动探测或手动指定"
-              @change="setClaudeConfigPath(claudeConfigPath)"
-            />
-          </div>
-        </div>
-
-        <!-- 错误提示 -->
-        <div v-if="profileError" class="error-bar">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 8v4M12 16h.01"/>
-          </svg>
-          <span>{{ profileError }}</span>
         </div>
       </div>
 
