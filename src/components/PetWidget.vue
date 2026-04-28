@@ -16,6 +16,8 @@ import JellySpirit from './pets/JellySpirit.vue'
 import PixelGhost from './pets/PixelGhost.vue'
 import PolarBear from './pets/PolarBear.vue'
 import LottieDog from './pets/LottieDog.vue'
+import LottieProcrastination from './pets/LottieProcrastination.vue'
+import LottieCat from './pets/LottieCat.vue'
 
 const { displayMode } = useDisplayMode()
 const { loadConfig, setupConfigListener, config, basicConfig, hasApiKey } = useSettings()
@@ -307,6 +309,8 @@ onUnmounted(() => {
       <PixelGhost v-else-if="petType === 'ghost'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="80" :height="80" />
       <PolarBear v-else-if="petType === 'polar'" :state="petState" :width="96" :height="96" />
       <LottieDog v-else-if="petType === 'lottie-dog'" :state="petState" :width="96" :height="96" />
+      <LottieProcrastination v-else-if="petType === 'procrastination'" :state="petState" :width="96" :height="96" />
+      <LottieCat v-else-if="petType === 'lottie-cat'" :state="petState" :width="96" :height="96" />
       <CatGifViewer v-else-if="currentAction.startsWith('cat-')" :action="currentAction" :width="80" :height="80" />
       <component v-else :is="petComponents[currentAction as keyof typeof petComponents]" :key="currentAction" />
 

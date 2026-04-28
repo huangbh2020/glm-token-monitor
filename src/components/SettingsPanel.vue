@@ -392,7 +392,9 @@ onUnmounted(() => {
                 { value: 'spirit', label: '果冻精灵', desc: 'Jelly Spirit' },
                 { value: 'ghost', label: '像素幽灵', desc: 'Pixel Ghost' },
                 { value: 'polar', label: '睡觉猫咪', desc: 'Sleeping Cat' },
-                { value: 'lottie-dog', label: '打字小狗', desc: 'Typing Dog' }
+                { value: 'lottie-dog', label: '打字小狗', desc: 'Typing Dog' },
+                { value: 'procrastination', label: '拖延症', desc: 'Procrastination' },
+                { value: 'lottie-cat', label: '可爱黑猫', desc: 'Cute Black Cat' }
               ]"
               :key="pet.value"
               class="pet-option"

@@ -36,7 +36,7 @@ export function usePetAction(initialPet: PetType = 'spirit', interval: number = 
       let actions: string[]
       if (type === 'cat') actions = CAT_ACTIONS
       else if (type === 'dog') actions = DOG_ACTIONS
-      else if (type === 'spirit' || type === 'ghost' || type === 'polar' || type === 'lottie-dog') {
+      else if (type === 'spirit' || type === 'ghost' || type === 'polar' || type === 'lottie-dog' || type === 'procrastination' || type === 'lottie-cat') {
         actions = SPIRIT_ACTIONS
       }
       else actions = SPIRIT_ACTIONS
