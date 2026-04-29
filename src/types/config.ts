@@ -1,10 +1,6 @@
 export type DisplayMode =
   | 'none'             // 无 - 不显示用量 (None)
-  | 'holo-bubble'      // 全息像素气泡 (Holo-Bubble)
-  | 'cyber-ring'       // 赛博能量环 (Cyber-Ring)
-  | 'aura-field'       // 灵能力场波纹 (Aura-Field)
-  | 'energy-core'      // 格子能量核心 (Energy-Core)
-  | 'status-floater'   // 悬浮状态标 (Status-Floater)
+  | 'pedestal'         // 底座展示 (Pedestal)
 
 export interface DisplayConfig {
   display_mode: DisplayMode
@@ -27,7 +23,7 @@ export interface PollingConfig {
 }
 
 // 宠物类型
-export type PetType = 'spirit' | 'ghost' | 'polar' | 'cat' | 'dog' | 'lottie-dog' | 'procrastination' | 'lottie-cat'
+export type PetType = 'spirit' | 'ghost' | 'polar' | 'cat' | 'dog' | 'lottie-dog' | 'procrastination' | 'lottie-cat' | 'octoyaki' | 'fixing' | 'bicycle'
 
 // 猫咪动作（已废弃，保留以兼容）
 export type CatAction = 'cat-sleep' | 'cat-play' | 'cat-stare' | 'cat-stretch'

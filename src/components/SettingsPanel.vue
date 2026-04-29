@@ -46,11 +46,7 @@ const isDragging = ref(false)
 
 const displayModes: { value: DisplayMode; label: string }[] = [
   { value: 'none', label: '无' },
-  { value: 'holo-bubble', label: '全息气泡' },
-  { value: 'cyber-ring', label: '赛博光环' },
-  { value: 'aura-field', label: '光环力场' },
-  { value: 'energy-core', label: '能量核心' },
-  { value: 'status-floater', label: '状态悬浮' }
+  { value: 'pedestal', label: '底座' }
 ]
 
 const isTesting = ref(false)
@@ -389,12 +385,11 @@ onUnmounted(() => {
           <div class="pet-selector">
             <label
               v-for="pet in [
-                { value: 'spirit', label: '果冻精灵', desc: 'Jelly Spirit' },
-                { value: 'ghost', label: '像素幽灵', desc: 'Pixel Ghost' },
-                { value: 'polar', label: '睡觉猫咪', desc: 'Sleeping Cat' },
                 { value: 'lottie-dog', label: '打字小狗', desc: 'Typing Dog' },
                 { value: 'procrastination', label: '拖延症', desc: 'Procrastination' },
-                { value: 'lottie-cat', label: '可爱黑猫', desc: 'Cute Black Cat' }
+                { value: 'octoyaki', label: '章鱼烧', desc: 'Octoyaki Juggle' },
+                { value: 'fixing', label: '修 Bug', desc: 'Fixing' },
+                { value: 'bicycle', label: '骑单车', desc: 'Bicycle' }
               ]"
               :key="pet.value"
               class="pet-option"

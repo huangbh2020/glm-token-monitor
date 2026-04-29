@@ -13,10 +13,10 @@ const globalConfig = ref<AppConfig>({
     interval_minutes: 1
   },
   display_config: {
-    display_mode: 'holo-bubble'
+    display_mode: 'pedestal'
   },
   pet_config: {
-    selected_pet: 'cat' as PetType,
+    selected_pet: 'fixing' as PetType,
     action_interval: 25
   },
   basic_config: {

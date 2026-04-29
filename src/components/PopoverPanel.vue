@@ -18,6 +18,9 @@ import PolarBear from './pets/PolarBear.vue'
 import LottieDog from './pets/LottieDog.vue'
 import LottieProcrastination from './pets/LottieProcrastination.vue'
 import LottieCat from './pets/LottieCat.vue'
+import LottieOctoyaki from './pets/LottieOctoyaki.vue'
+import LottieFixing from './pets/LottieFixing.vue'
+import LottieBicycle from './pets/LottieBicycle.vue'
 
 const { displayMode } = useDisplayMode()
 const { loadConfig, setupConfigListener, config, basicConfig, hasApiKey } = useSettings()
@@ -206,8 +209,8 @@ watch([hasApiKey, showInfoPanel, displayMode, hasWeeklyLimit], async ([hasKey, s
     } else if (showPanel) {
       const panelHeight = hasWeeklyLimit.value ? 220 : 180
       await invoke('resize_main_window', { width: 154, height: panelHeight })
-    } else if (mode && mode !== 'none') {
-      await invoke('resize_main_window', { width: 120, height: 120 })
+    } else if (mode === 'pedestal') {
+      await invoke('resize_main_window', { width: 160, height: 150 })
     } else {
       await invoke('resize_main_window', { width: 120, height: 120 })
     }
@@ -257,45 +260,26 @@ onUnmounted(() => {
       <JellySpirit v-if="petType === 'spirit'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="80" :height="80" />
       <PixelGhost v-else-if="petType === 'ghost'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="80" :height="80" />
       <PolarBear v-else-if="petType === 'polar'" :state="petState" :width="80" :height="80" />
-      <LottieDog v-else-if="petType === 'lottie-dog'" :state="petState" :width="80" :height="80" />
-      <LottieProcrastination v-else-if="petType === 'procrastination'" :state="petState" :width="80" :height="80" />
-      <LottieCat v-else-if="petType === 'lottie-cat'" :state="petState" :width="80" :height="80" />
+      <LottieDog v-else-if="petType === 'lottie-dog'" :state="petState" :width="96" :height="96" />
+      <LottieProcrastination v-else-if="petType === 'procrastination'" :state="petState" :width="96" :height="96" />
+      <LottieCat v-else-if="petType === 'lottie-cat'" :state="petState" :width="96" :height="96" />
+      <LottieOctoyaki v-else-if="petType === 'octoyaki'" :state="petState" :width="96" :height="96" />
+      <LottieFixing v-else-if="petType === 'fixing'" :state="petState" :width="120" :height="80" />
+      <LottieBicycle v-else-if="petType === 'bicycle'" :state="petState" :width="96" :height="96" />
       <CatGifViewer v-else-if="currentAction.startsWith('cat-')" :action="currentAction" :width="80" :height="80" />
       <component v-else :is="petComponents[currentAction as keyof typeof petComponents]" :key="currentAction" />
 
-      <!-- 5 种展示模式 -->
-      <div v-if="displayMode === 'holo-bubble'" class="holo-bubble token-mode" :class="`state-${petState.toLowerCase()}`">
-        <span class="holo-val">{{ 100 - tokensPercent }}%</span>
-      </div>
-      <div v-else-if="displayMode === 'cyber-ring'" class="cyber-ring token-mode" :class="`state-${petState.toLowerCase()}`">
-        <svg viewBox="0 0 100 100" class="cr-svg">
-          <circle class="cr-bg-dashed" cx="50" cy="50" r="46"/>
-          <circle class="cr-progress" cx="50" cy="50" r="42"
-            stroke-dasharray="264"
-            :stroke-dashoffset="264 * (tokensPercent / 100)"
-          />
-        </svg>
-        <div class="cr-center-val">{{ 100 - tokensPercent }}%</div>
-      </div>
-      <div v-else-if="displayMode === 'aura-field'" class="aura-field token-mode" :class="`state-${petState.toLowerCase()}`">
-        <div class="aura-ripple r1"></div>
-        <div class="aura-ripple r2"></div>
-        <div class="aura-ripple r3"></div>
-        <div class="aura-val">{{ 100 - tokensPercent }}%</div>
-      </div>
-      <div v-else-if="displayMode === 'energy-core'" class="energy-core token-mode" :class="`state-${petState.toLowerCase()}`">
-        <div class="ec-grid">
-          <div v-for="i in 16" :key="i" class="ec-pixel" :class="{ on: (100 - tokensPercent) >= (i * 6.25 - 3.125) }"></div>
-        </div>
-        <div class="ec-val">{{ 100 - tokensPercent }}%</div>
-      </div>
-      <div v-else-if="displayMode === 'status-floater'" class="status-floater token-mode" :class="`state-${petState.toLowerCase()}`">
-        <div class="sf-bar-container">
-          <div class="sf-bar-fill" :style="{ height: (100 - tokensPercent) + '%' }"></div>
-        </div>
-        <div class="sf-text">{{ 100 - tokensPercent }}%</div>
-      </div>
     </div>
+
+    <!-- 底座展示模式 -->
+    <transition name="pedestal-fade">
+      <div v-if="displayMode === 'pedestal' && !showInfoPanel" class="pet-pedestal" :class="`state-${petState.toLowerCase()}`">
+        <div class="pedestal-bar">
+          <div class="pedestal-fill" :style="{ width: (100 - tokensPercent) + '%' }"></div>
+        </div>
+        <span class="pedestal-text">{{ 100 - tokensPercent }}%</span>
+      </div>
+    </transition>
 
     <!-- API 配置提示气泡（未配置时显示） -->
     <transition name="bubble-fade">
@@ -396,8 +380,9 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   background: transparent !important;
   position: relative;
   cursor: pointer;
@@ -421,8 +406,6 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   transition: opacity 0.25s ease, transform 0.25s ease;
-  width: 80px;
-  height: 80px;
   cursor: pointer;
 }
 
@@ -590,165 +573,71 @@ onUnmounted(() => {
   75% { transform: rotate(8deg); }
 }
 
-/* ── Display Modes Base ── */
-.token-mode { z-index: 20; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease; position: absolute; }
-
-/* 1. Holo Bubble */
-.holo-bubble {
-  top: 0; right: -10px;
-  background: rgba(15, 23, 42, 0.85); border: 1px solid #475569;
-  box-shadow: 0 0 6px rgba(0,0,0,0.5), inset 0 0 8px rgba(96,165,250,0.1);
-  padding: 1px 4px; font-family: ui-monospace, SFMono-Regular, monospace;
-  font-size: 8px; font-weight: 700; color: #94A3B8;
-  border-radius: 3px; overflow: hidden;
-  animation: holo-float 2.5s ease-in-out infinite alternate;
-  display: flex; align-items: center; gap: 2px;
-  z-index: 25;
-}
-.holo-bubble .holo-val {
-  text-shadow: 0 0 4px currentColor; font-family: 'Press Start 2P', monospace; font-size: 10px;
-  position: relative; z-index: 2;
-}
-.holo-bubble.state-fresh .holo-val { color: #34D399; }
-.holo-bubble.state-flow .holo-val { color: #60A5FA; }
-.holo-bubble.state-warning .holo-val { color: #FBBF24; }
-.holo-bubble.state-panic .holo-val { color: #F87171; animation: glitch 0.3s infinite; }
-.holo-bubble.state-dead .holo-val { color: #9CA3AF; }
-
-@keyframes holo-float {
-  from { transform: translateY(0); box-shadow: 0 0 5px rgba(96,165,250,0.2); }
-  to { transform: translateY(-3px); box-shadow: 0 0 12px rgba(96,165,250,0.4); }
+/* ── 底座展示模式 ── */
+.pet-pedestal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  margin-top: 2px;
+  background: rgba(15, 15, 17, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  z-index: 10;
+  min-width: 120px;
 }
 
-/* 2. Cyber Ring */
-.cyber-ring {
-  inset: -10px; pointer-events: none; z-index: 1;
-}
-.cr-svg {
-  width: 100%; height: 100%; transform: rotate(-90deg); filter: drop-shadow(0 0 3px rgba(0,0,0,0.5));
-}
-.cr-bg-dashed {
-  fill: none; stroke: #334155; stroke-width: 1.5; stroke-dasharray: 3 4;
-  transform-origin: 50px 50px; animation: cr-spin 20s linear infinite;
-}
-.cr-progress {
-  fill: none; stroke-width: 2; stroke-linecap: butt;
-  transition: stroke-dashoffset 0.5s ease, stroke 0.5s ease;
-}
-.state-fresh .cr-progress { stroke: #34D399; filter: drop-shadow(0 0 4px #34D399); }
-.state-flow .cr-progress { stroke: #60A5FA; filter: drop-shadow(0 0 4px #60A5FA); }
-.state-warning .cr-progress { stroke: #FBBF24; filter: drop-shadow(0 0 4px #FBBF24); }
-.state-panic .cr-progress { stroke: #F87171; filter: drop-shadow(0 0 6px #F87171); animation: cr-alarm 1s ease infinite alternate; }
-.state-dead .cr-progress { stroke: #9CA3AF; }
+.pet-pedestal.state-fresh { border-color: rgba(52, 211, 153, 0.25); box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 8px rgba(52,211,153,0.12); }
+.pet-pedestal.state-flow { border-color: rgba(96, 165, 250, 0.25); box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 8px rgba(96,165,250,0.12); }
+.pet-pedestal.state-warning { border-color: rgba(251, 191, 36, 0.3); box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 8px rgba(251,191,36,0.15); }
+.pet-pedestal.state-panic { border-color: rgba(248, 113, 113, 0.35); box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 12px rgba(248,113,113,0.2); }
+.pet-pedestal.state-dead { border-color: rgba(107, 114, 128, 0.2); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
 
-.cr-center-val {
-  position: absolute; bottom: -8px; right: -12px; font-family: 'Press Start 2P', monospace; font-size: 10px; font-weight: bold;
-  background: rgba(15,23,42,0.9); padding: 2px 3px; border-radius: 3px; border: 1px solid #1E293B;
-  z-index: 25;
-}
-.state-fresh .cr-center-val { color: #34D399; }
-.state-flow .cr-center-val { color: #60A5FA; }
-.state-warning .cr-center-val { color: #FBBF24; }
-.state-panic .cr-center-val { color: #F87171; }
-.state-dead .cr-center-val { color: #9CA3AF; }
-
-@keyframes cr-spin { to { transform: rotate(360deg); } }
-@keyframes cr-alarm { from { opacity: 0.6; } to { opacity: 1; stroke-width: 4; } }
-
-/* 3. Aura Field */
-.aura-field {
-  inset: -10px; pointer-events: none; z-index: 0;
-  display: flex; justify-content: center; align-items: center;
-}
-.aura-ripple {
-  position: absolute; border-radius: 50%; opacity: 0;
-  border: 1.5px solid; animation: aura-pulse 3s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
-}
-.aura-field .r1 { animation-delay: 0s; }
-.aura-field .r2 { animation-delay: 1s; }
-.aura-field .r3 { animation-delay: 2s; }
-.state-fresh .aura-ripple { border-color: #34D399; }
-.state-flow .aura-ripple { border-color: #60A5FA; }
-.state-warning .aura-ripple { border-color: #FBBF24; animation-duration: 1.5s; }
-.state-panic .aura-ripple { border-color: #F87171; animation-duration: 0.8s; border-width: 2px; }
-.state-dead .aura-ripple { border-color: #6B7280; animation: none; opacity: 0.2; width: 40px; height: 40px; }
-
-.aura-val {
-  position: absolute; bottom: -8px; right: -12px; font-family: 'Press Start 2P', monospace; font-size: 10px;
-  background: rgba(0,0,0,0.8); padding: 2px 3px; border-radius: 2px; border: 1px dashed;
-  z-index: 25;
-}
-.state-fresh .aura-val { color: #34D399; border-color: #34D399; }
-.state-flow .aura-val { color: #60A5FA; border-color: #60A5FA; }
-.state-warning .aura-val { color: #FBBF24; border-color: #FBBF24; }
-.state-panic .aura-val { color: #F87171; border-color: #F87171; }
-.state-dead .aura-val { color: #9CA3AF; border-color: #9CA3AF; }
-
-@keyframes aura-pulse {
-  0% { width: 40px; height: 40px; opacity: 0.8; }
-  100% { width: 100px; height: 100px; opacity: 0; }
+.pedestal-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
 }
 
-/* 4. Energy Core */
-.energy-core {
-  bottom: -10px; right: -10px; pointer-events: none; z-index: 15;
-  background: rgba(15,23,42,0.9); padding: 3px; border: 1px solid #334155; border-radius: 2px;
+.pedestal-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease, background 0.5s ease;
 }
-.ec-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
-}
-.ec-pixel {
-  width: 4px; height: 4px; background: #1E293B; transition: all 0.3s;
-}
-.state-fresh .ec-pixel.on { background: #34D399; box-shadow: 0 0 3px #34D399; }
-.state-flow .ec-pixel.on { background: #60A5FA; box-shadow: 0 0 3px #60A5FA; }
-.state-warning .ec-pixel.on { background: #FBBF24; box-shadow: 0 0 3px #FBBF24; }
-.state-panic .ec-pixel.on { background: #F87171; box-shadow: 0 0 4px #F87171; animation: ec-flash 0.5s infinite alternate; }
-.state-dead .ec-pixel.on { background: #6B7280; box-shadow: none; }
 
-.ec-val {
-  position: absolute; top: -16px; right: 0px; font-family: 'Press Start 2P', monospace; font-size: 10px;
-  background: rgba(15,23,42,0.9); padding: 1px 3px; border-radius: 2px; border: 1px solid #1E293B;
-}
-.state-fresh .ec-val { color: #34D399; }
-.state-flow .ec-val { color: #60A5FA; }
-.state-warning .ec-val { color: #FBBF24; }
-.state-panic .ec-val { color: #F87171; }
-.state-dead .ec-val { color: #9CA3AF; }
+.state-fresh .pedestal-fill { background: linear-gradient(90deg, #34D399, #6EE7B7); }
+.state-flow .pedestal-fill { background: linear-gradient(90deg, #3B82F6, #60A5FA); }
+.state-warning .pedestal-fill { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
+.state-panic .pedestal-fill { background: linear-gradient(90deg, #EF4444, #F87171); }
+.state-dead .pedestal-fill { background: linear-gradient(90deg, #4B5563, #6B7280); }
 
-@keyframes ec-flash { from { opacity: 0.5; } to { opacity: 1; } }
+.pedestal-text {
+  font-family: 'SF Mono', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 32px;
+  text-align: right;
+}
 
-/* 5. Status Floater */
-.status-floater {
-  left: -12px; top: 50%; transform: translateY(-50%); pointer-events: none; z-index: 15;
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
-}
-.sf-bar-container {
-  width: 6px; height: 50px; background: rgba(30,41,59,0.8); border: 1px solid #475569; border-radius: 2px;
-  overflow: hidden; position: relative;
-}
-.sf-bar-fill {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  transition: height 0.5s ease, background 0.5s ease;
-}
-.state-fresh .sf-bar-fill { background: linear-gradient(to top, #34D399, #6EE7B7); }
-.state-flow .sf-bar-fill { background: linear-gradient(to top, #3B82F6, #60A5FA); }
-.state-warning .sf-bar-fill { background: linear-gradient(to top, #F59E0B, #FBBF24); }
-.state-panic .sf-bar-fill { background: linear-gradient(to top, #EF4444, #F87171); animation: sf-flash 0.8s infinite alternate; }
-.state-dead .sf-bar-fill { background: linear-gradient(to top, #4B5563, #6B7280); }
+.state-fresh .pedestal-text { color: #34D399; }
+.state-flow .pedestal-text { color: #60A5FA; }
+.state-warning .pedestal-text { color: #FBBF24; }
+.state-panic .pedestal-text { color: #F87171; }
+.state-dead .pedestal-text { color: #9CA3AF; }
 
-.sf-text {
-  font-family: 'Press Start 2P', monospace; font-size: 10px; margin-top: 2px;
-  background: rgba(15,23,42,0.9); padding: 1px 2px; border-radius: 2px; border: 1px solid #1E293B;
-  white-space: nowrap;
+.pedestal-fade-enter-active,
+.pedestal-fade-leave-active {
+  transition: all 0.25s ease;
 }
-.state-fresh .sf-text { color: #34D399; }
-.state-flow .sf-text { color: #60A5FA; }
-.state-warning .sf-text { color: #FBBF24; }
-.state-panic .sf-text { color: #F87171; }
-.state-dead .sf-text { color: #9CA3AF; }
-
-@keyframes sf-flash { from { opacity: 0.7; } to { opacity: 1; } }
+.pedestal-fade-enter-from,
+.pedestal-fade-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
 
 /* ── 信息面板气泡 ── */
 .info-bubble {

@@ -7,7 +7,7 @@ export function useDisplayMode(config?: Ref<AppConfig>) {
   const settings = config ? { config } : useSettings()
 
   const displayMode = computed<DisplayMode>(() => {
-    const mode = settings.config.value.display_config?.display_mode || 'holo-bubble'
+    const mode = settings.config.value.display_config?.display_mode || 'pedestal'
     console.log('[DEBUG useDisplayMode] computed evaluated to:', mode)
     return mode
   })
