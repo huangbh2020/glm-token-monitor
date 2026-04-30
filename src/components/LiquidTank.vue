@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import type { PetState } from '../composables/useUsageState'
 
 const props = defineProps<{
-  percent: number
+  percent: number   // 剩余百分比 0-100
   state: PetState
 }>()
 
@@ -12,77 +12,36 @@ const tankH = 20
 const pad = 2
 const innerW = tankW - pad * 2   // 132
 const innerH = tankH - pad * 2   // 16
+const rx = innerH / 2            // 8 → 胶囊圆角
 
-// 容器边框发光色（由状态驱动）
+// 容器边框发光（由状态驱动）
 const borderGlows: Record<PetState, string> = {
-  Fresh:   'rgba(52,211,153,0.4)',
-  Flow:    'rgba(96,165,250,0.4)',
-  Warning: 'rgba(251,191,36,0.4)',
-  Panic:   'rgba(248,113,113,0.5)',
+  Fresh:   'rgba(52,211,153,0.35)',
+  Flow:    'rgba(96,165,250,0.35)',
+  Warning: 'rgba(251,191,36,0.35)',
+  Panic:   'rgba(248,113,113,0.45)',
   Dead:    'rgba(107,114,128,0.2)',
 }
+const glow = computed(() => borderGlows[props.state])
 
-// 波浪振幅（由状态驱动）
-const stateAmplitudes: Record<PetState, number> = {
-  Fresh: 2, Flow: 2, Warning: 1.5, Panic: 3, Dead: 0.5,
-}
+// 百分比（剩余）
+const percentDisplay = computed(() => Math.round(Math.max(0, Math.min(100, props.percent))))
 
-// 动画速度（由状态驱动）
-const stateDurations: Record<PetState, string> = {
-  Fresh: '3s', Flow: '2.5s', Warning: '2s', Panic: '1s', Dead: '6s',
-}
+// 剩余区域宽度
+const remainW = computed(() => (percentDisplay.value / 100) * innerW)
 
-const glow      = computed(() => borderGlows[props.state])
-const amplitude = computed(() => stateAmplitudes[props.state])
-const duration  = computed(() => stateDurations[props.state])
+// 已用量区域宽度
+const usedW = computed(() => innerW - remainW.value)
 
-// ─── 液面颜色：根据剩余百分比连续渐变 ───
-// 100% → 绿色(hue 140)，50% → 黄色(hue 50)，0% → 红色(hue 0)
-const liquidHue = computed(() => {
-  const p = Math.max(0, Math.min(100, props.percent))
-  // 非线性映射：低百分比时更快变红
-  const t = p / 100
-  return t * t * 100 + t * 40  // 0→0, 50→45, 100→140
+// ─── 颜色：剩余量颜色随百分比连续变化 ───
+// 100% → 绿(hue 140)，50% → 黄(hue 50)，0% → 红(hue 0)
+const hue = computed(() => {
+  const t = percentDisplay.value / 100
+  return t * t * 100 + t * 40
 })
 
-const liquidColorTop    = computed(() => `hsl(${liquidHue.value}, 80%, 55%)`)
-const liquidColorBottom = computed(() => `hsl(${liquidHue.value}, 70%, 40%)`)
-const liquidColorMid    = computed(() => `hsl(${liquidHue.value}, 75%, 48%)`)
-
-// 百分比显示
-const percentDisplay = computed(() => Math.round(props.percent))
-
-// 液面高度
-const fillHeight = computed(() => {
-  const h = (Math.max(0, Math.min(100, props.percent)) / 100) * innerH
-  return Math.max(h, 0)
-})
-
-// 波浪基准 Y
-const waveY = computed(() => tankH - pad - fillHeight.value)
-
-// 生成波浪 SVG path（加宽覆盖范围避免边缘缝隙）
-function wavePath(y: number, amp: number): string {
-  const a = Math.min(amp, fillHeight.value / 2)
-  return [
-    `M -6 ${y}`,
-    `C 10 ${y - a}, 30 ${y + a}, 50 ${y}`,
-    `C 70 ${y - a}, 90 ${y + a}, 110 ${y}`,
-    `C 124 ${y - a}, 134 ${y + a}, 142 ${y}`,
-    `L 142 ${tankH} L -6 ${tankH} Z`,
-  ].join(' ')
-}
-
-const waveFrontPath = computed(() => wavePath(waveY.value, amplitude.value))
-const waveBackPath  = computed(() => wavePath(waveY.value, amplitude.value * 0.6))
-
-// 文字颜色：液面亮时用深色字，液面暗时用亮色字
-const textColor = computed(() => {
-  const p = props.percent
-  if (p > 60) return 'rgba(255,255,255,0.95)'
-  if (p > 30) return 'rgba(255,255,255,0.9)'
-  return 'rgba(255,255,255,0.85)'
-})
+const remainColor = computed(() => `hsl(${hue.value}, 72%, 50%)`)
+const remainColorLight = computed(() => `hsl(${hue.value}, 65%, 62%)`)
 </script>
 
 <template>
@@ -96,75 +55,83 @@ const textColor = computed(() => {
         class="liquid-tank"
       >
         <defs>
+          <!-- 胶囊裁剪 -->
           <clipPath id="tank-clip">
-            <rect :x="pad" :y="pad" :width="innerW" :height="innerH" :rx="(innerH / 2)" />
+            <rect :x="pad" :y="pad" :width="innerW" :height="innerH" :rx="rx" />
           </clipPath>
 
-          <!-- 液面渐变：颜色随 percent 连续变化 -->
-          <linearGradient id="liquid-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   :stop-color="liquidColorTop" stop-opacity="0.85" />
-            <stop offset="50%"  :stop-color="liquidColorMid" />
-            <stop offset="100%" :stop-color="liquidColorBottom" />
-          </linearGradient>
-
-          <!-- 液面高光 -->
-          <linearGradient id="highlight" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stop-color="white" stop-opacity="0.3" />
-            <stop offset="100%" stop-color="white" stop-opacity="0" />
+          <!-- 剩余区域渐变 -->
+          <linearGradient id="remain-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   :stop-color="remainColorLight" />
+            <stop offset="100%" :stop-color="remainColor" />
           </linearGradient>
         </defs>
 
-        <!-- 容器背景 -->
+        <!-- 容器背景（深色底 = 已用量视觉） -->
         <rect
           :x="pad" :y="pad" :width="innerW" :height="innerH"
-          :rx="(innerH / 2)"
-          fill="rgba(10,10,15,0.9)"
+          :rx="rx"
+          fill="rgba(60,60,70,0.85)"
         />
 
-        <!-- 液面（裁剪到胶囊内） -->
+        <!-- 已用量区域（较暗） -->
         <g clip-path="url(#tank-clip)">
-          <path
-            :d="waveBackPath"
-            fill="url(#liquid-grad)"
-            opacity="0.35"
-            class="wave wave-back"
-            :style="{ animationDuration: `calc(${duration} * 1.5)` }"
-          />
-          <path
-            :d="waveFrontPath"
-            fill="url(#liquid-grad)"
-            class="wave wave-front"
-            :style="{ animationDuration: duration }"
-          />
-          <!-- 高光条 -->
           <rect
-            v-if="fillHeight > 2"
-            :x="pad + 6"
-            :y="waveY + 1"
-            :width="innerW - 12"
-            height="1.5"
-            rx="0.75"
-            fill="url(#highlight)"
-            class="wave-highlight"
+            :x="pad + remainW"
+            :y="pad"
+            :width="usedW"
+            :height="innerH"
+            fill="rgba(30,30,38,0.9)"
           />
         </g>
+
+        <!-- 剩余量区域（亮色渐变，从左侧填充） -->
+        <g clip-path="url(#tank-clip)">
+          <rect
+            :x="pad"
+            :y="pad"
+            :width="remainW"
+            :height="innerH"
+            fill="url(#remain-grad)"
+            class="remain-bar"
+          />
+          <!-- 顶部高光条 -->
+          <rect
+            v-if="remainW > 4"
+            :x="pad + 2"
+            :y="pad + 1"
+            :width="remainW - 4"
+            height="2"
+            rx="1"
+            fill="rgba(255,255,255,0.2)"
+          />
+        </g>
+
+        <!-- 分割线（剩余/已用交界处） -->
+        <line
+          v-if="remainW > 2 && remainW < innerW - 2"
+          :x1="pad + remainW"
+          :y1="pad + 1"
+          :x2="pad + remainW"
+          :y2="pad + innerH - 1"
+          stroke="rgba(255,255,255,0.2)"
+          stroke-width="0.8"
+        />
 
         <!-- 边框 + 发光 -->
         <rect
           :x="pad" :y="pad" :width="innerW" :height="innerH"
-          :rx="(innerH / 2)"
+          :rx="rx"
           fill="none"
-          stroke="rgba(255,255,255,0.12)"
+          stroke="rgba(255,255,255,0.1)"
           stroke-width="0.8"
           class="tank-stroke"
           :style="{ filter: `drop-shadow(0 0 3px ${glow})` }"
         />
       </svg>
 
-      <!-- 百分比数字 -->
-      <span class="tank-percent" :style="{ color: textColor }">
-        {{ percentDisplay }}%
-      </span>
+      <!-- 百分比文字（居中） -->
+      <span class="tank-percent">{{ percentDisplay }}%</span>
     </div>
   </div>
 </template>
@@ -189,27 +156,13 @@ const textColor = computed(() => {
   overflow: visible;
 }
 
+/* 剩余量颜色过渡 */
+.remain-bar {
+  transition: width 0.6s ease, fill 0.6s ease;
+}
+
 .tank-stroke {
   transition: filter 0.6s ease;
-}
-
-.wave {
-  will-change: transform;
-}
-.wave-front {
-  animation: waveShift 2.5s linear infinite;
-}
-.wave-back {
-  animation: waveShift 3.5s linear infinite reverse;
-}
-.wave-highlight {
-  will-change: transform;
-  animation: waveShift 2.5s linear infinite;
-}
-
-@keyframes waveShift {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-56px); }
 }
 
 .tank-percent {
@@ -218,9 +171,9 @@ const textColor = computed(() => {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.3px;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.6);
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
   pointer-events: none;
   z-index: 5;
-  transition: color 0.8s ease;
 }
 </style>
