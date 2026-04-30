@@ -42,6 +42,20 @@ const hue = computed(() => {
 
 const remainColor = computed(() => `hsl(${hue.value}, 72%, 50%)`)
 const remainColorLight = computed(() => `hsl(${hue.value}, 65%, 62%)`)
+
+// 文字颜色：亮底用暗字，暗底用亮字
+const textColor = computed(() => {
+  const p = percentDisplay.value
+  // 高余量(绿色/黄色背景) → 深色字，低余量(红色背景) → 浅色字
+  if (p > 40) return 'rgba(10, 10, 15, 0.9)'
+  return 'rgba(255, 255, 255, 0.9)'
+})
+
+const textShadow = computed(() => {
+  const p = percentDisplay.value
+  if (p > 40) return '0 0.5px 0 rgba(255,255,255,0.3)'
+  return '0 0.5px 1px rgba(0,0,0,0.8)'
+})
 </script>
 
 <template>
@@ -130,8 +144,8 @@ const remainColorLight = computed(() => `hsl(${hue.value}, 65%, 62%)`)
         />
       </svg>
 
-      <!-- 百分比文字（居中） -->
-      <span class="tank-percent">{{ percentDisplay }}%</span>
+      <!-- 百分比文字（居中，颜色自适应） -->
+      <span class="tank-percent" :style="{ color: textColor, textShadow: textShadow }">{{ percentDisplay }}%</span>
     </div>
   </div>
 </template>
@@ -171,9 +185,8 @@ const remainColorLight = computed(() => `hsl(${hue.value}, 65%, 62%)`)
   font-size: 8px;
   font-weight: 700;
   letter-spacing: 0.2px;
-  color: rgba(255, 255, 255, 0.85);
-  text-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.9);
   pointer-events: none;
   z-index: 5;
+  transition: color 0.5s ease, text-shadow 0.5s ease;
 }
 </style>
