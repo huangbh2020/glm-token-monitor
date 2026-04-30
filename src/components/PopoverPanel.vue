@@ -21,6 +21,10 @@ import LottieCat from './pets/LottieCat.vue'
 import LottieOctoyaki from './pets/LottieOctoyaki.vue'
 import LottieFixing from './pets/LottieFixing.vue'
 import LottieBicycle from './pets/LottieBicycle.vue'
+import { useModelUsage } from '../composables/useModelUsage'
+import UsageBarChart from './UsageBarChart.vue'
+import UsageDailyBarChart from './UsageDailyBarChart.vue'
+import UsageLineChart from './UsageLineChart.vue'
 
 const { displayMode } = useDisplayMode()
 const { loadConfig, setupConfigListener, config, basicConfig, hasApiKey } = useSettings()
@@ -34,6 +38,32 @@ const { usagePercent, petState, gradientColor, gradientStrokeColor } = useUsageS
 )
 
 const { petType, currentAction, setPetType } = usePetAction()
+
+// 模型用量数据
+const { modelUsageData, isLoading: isModelLoading, error: modelError, activeTab, fetchModelUsage } = useModelUsage()
+const isExpanded = ref(false)
+
+async function toggleExpanded() {
+  if (!isExpanded.value) {
+    isExpanded.value = true
+    showInfoPanel.value = true
+    if (!modelUsageData.value) {
+      await fetchModelUsage('today')
+    }
+  } else {
+    isExpanded.value = false
+  }
+}
+
+async function switchTab(tab: 'today' | '7days' | '30days') {
+  await fetchModelUsage(tab)
+}
+
+function formatTokens(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`
+  return String(value)
+}
 
 watch(() => config.value?.pet_config?.selected_pet, (newPet) => {
   if (newPet && newPet !== petType.value) {
@@ -201,11 +231,14 @@ function setupDataRefreshTimer() {
 }
 
 // 监听状态变化，动态调整窗口大小（与 PetWidget 一致）
-watch([hasApiKey, showInfoPanel, displayMode, hasWeeklyLimit], async ([hasKey, showPanel, mode, hasWeekly]) => {
+watch([hasApiKey, showInfoPanel, displayMode, hasWeeklyLimit, isExpanded, activeTab], async ([hasKey, showPanel, mode]) => {
   try {
     const { invoke } = await import('@tauri-apps/api/core')
     if (!hasKey) {
       await invoke('resize_main_window', { width: 160, height: 180 })
+    } else if (isExpanded.value) {
+      const heights: Record<string, number> = { today: 380, '7days': 440, '30days': 520 }
+      await invoke('resize_main_window', { width: 340, height: heights[activeTab.value] || 380 })
     } else if (showPanel) {
       const panelHeight = hasWeeklyLimit.value ? 220 : 180
       await invoke('resize_main_window', { width: 154, height: panelHeight })
@@ -369,6 +402,72 @@ onUnmounted(() => {
             <span class="info-reset">刷新: {{ timeResetTime }}</span>
           </div>
         </div>
+        <!-- 查看更多按钮 -->
+        <div class="view-more-row">
+          <button class="view-more-btn" @click.stop="toggleExpanded">
+            {{ isExpanded ? '收起' : '查看更多' }}
+            <svg :class="{ rotated: isExpanded }" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </transition>
+    <!-- 展开详情面板 -->
+    <transition name="panel-expand">
+      <div v-if="isExpanded && hasApiKey" class="expanded-panel" :data-theme="currentTheme"
+        @mousedown.stop @click.stop @dblclick.stop>
+        <div class="expanded-header">
+          <span class="expanded-title">用量详情</span>
+          <button class="info-btn close" @click="isExpanded = false" title="收起">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div v-if="isModelLoading" class="loading-state">
+          <svg class="spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 4v6h-6M1 20v-6h6"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          <span>加载中...</span>
+        </div>
+        <div v-else-if="modelError" class="error-state">
+          <span>{{ modelError.slice(0, 30) }}</span>
+        </div>
+        <template v-else-if="modelUsageData">
+          <div class="overview-section">
+            <div class="overview-item">
+              <span class="overview-label">总用量</span>
+              <span class="overview-value">{{ formatTokens(modelUsageData.totalUsage.totalTokensUsage) }}</span>
+            </div>
+            <div class="overview-item">
+              <span class="overview-label">调用次数</span>
+              <span class="overview-value">{{ modelUsageData.totalUsage.totalModelCallCount }}</span>
+            </div>
+          </div>
+          <div class="models-section">
+            <div v-for="m in modelUsageData.modelSummaryList" :key="m.modelName" class="model-row">
+              <span class="model-name">{{ m.modelName }}</span>
+              <span class="model-tokens">{{ formatTokens(m.totalTokens) }}</span>
+            </div>
+          </div>
+          <div class="tab-bar">
+            <button
+              v-for="tab in (['today', '7days', '30days'] as const)"
+              :key="tab"
+              class="tab-btn"
+              :class="{ active: activeTab === tab }"
+              @click="switchTab(tab)"
+            >
+              {{ tab === 'today' ? '今天' : tab === '7days' ? '7天' : '30天' }}
+            </button>
+          </div>
+          <!-- 图表展示 -->
+          <UsageBarChart v-if="activeTab === 'today'" :data="modelUsageData" />
+          <UsageDailyBarChart v-else-if="activeTab === '7days'" :data="modelUsageData" />
+          <UsageLineChart v-else :data="modelUsageData" />
+        </template>
       </div>
     </transition>
   </div>
@@ -852,5 +951,229 @@ onUnmounted(() => {
 .bubble-fade-leave-to {
   opacity: 0;
   transform: translateX(-50%) scale(0.9);
+}
+
+/* ── 查看更多按钮 ── */
+.view-more-row {
+  margin-top: 8px;
+  text-align: center;
+}
+
+.view-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 10px;
+  color: #60a5fa;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-more-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.view-more-btn svg {
+  transition: transform 0.2s ease;
+}
+
+.view-more-btn svg.rotated {
+  transform: rotate(180deg);
+}
+
+/* ── 展开详情面板 ── */
+.expanded-panel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 320px;
+  background: rgba(15, 15, 17, 0.96);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 12px;
+  padding: 12px;
+  z-index: 200;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 12px rgba(59, 130, 246, 0.15);
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
+  max-height: calc(100% - 20px);
+  overflow-y: auto;
+}
+
+.expanded-panel[data-theme="light"] {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(59, 130, 246, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.expanded-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.expanded-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e4e4e7;
+}
+
+.expanded-panel[data-theme="light"] .expanded-title {
+  color: #1c1c1e;
+}
+
+.overview-section {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.overview-item {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.expanded-panel[data-theme="light"] .overview-item {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.overview-label {
+  font-size: 9px;
+  color: #71717a;
+  font-weight: 500;
+}
+
+.overview-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e4e4e7;
+  font-family: ui-monospace, monospace;
+}
+
+.expanded-panel[data-theme="light"] .overview-value {
+  color: #1c1c1e;
+}
+
+.models-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.model-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+}
+
+.expanded-panel[data-theme="light"] .model-row {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.model-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: #a1a1aa;
+}
+
+.expanded-panel[data-theme="light"] .model-name {
+  color: #6b7280;
+}
+
+.model-tokens {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e4e4e7;
+  font-family: ui-monospace, monospace;
+}
+
+.expanded-panel[data-theme="light"] .model-tokens {
+  color: #1c1c1e;
+}
+
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+}
+
+.expanded-panel[data-theme="light"] .tab-bar {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 5px 0;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #71717a;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tab-btn.active {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.tab-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #a1a1aa;
+}
+
+.expanded-panel[data-theme="light"] .tab-btn.active {
+  background: rgba(59, 130, 246, 0.15);
+  color: #2563eb;
+}
+
+.expanded-panel[data-theme="light"] .tab-btn:hover:not(.active) {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.loading-state, .error-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  color: #71717a;
+  font-size: 11px;
+}
+
+.error-state {
+  color: #fca5a5;
+}
+
+.panel-expand-enter-active,
+.panel-expand-leave-active {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.panel-expand-enter-from,
+.panel-expand-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.9);
 }
 </style>

@@ -15,6 +15,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             commands::get_current_usage,
+            commands::get_model_usage,
             windows::open_info_panel,
             windows::close_info_panel,
             windows::open_settings_panel,

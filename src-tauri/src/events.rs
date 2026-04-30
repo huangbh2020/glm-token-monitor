@@ -82,3 +82,54 @@ pub struct UsageDetail {
     pub model_code: String,
     pub usage: u32,
 }
+
+// ── Model Usage API 响应结构 ──
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelUsageResponse {
+    pub code: u32,
+    pub data: Option<ModelUsageData>,
+    pub success: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelUsageData {
+    pub x_time: Vec<String>,
+    #[serde(rename = "modelCallCount")]
+    pub model_call_count: Vec<u64>,
+    #[serde(rename = "tokensUsage")]
+    pub tokens_usage: Vec<u64>,
+    #[serde(rename = "totalUsage")]
+    pub total_usage: TotalUsage,
+    #[serde(rename = "modelDataList")]
+    pub model_data_list: Vec<ModelDataEntry>,
+    #[serde(rename = "modelSummaryList")]
+    pub model_summary_list: Vec<ModelSummary>,
+    pub granularity: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TotalUsage {
+    pub total_model_call_count: u64,
+    pub total_tokens_usage: u64,
+    pub model_summary_list: Vec<ModelSummary>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelSummary {
+    pub model_name: String,
+    pub total_tokens: u64,
+    pub sort_order: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelDataEntry {
+    pub model_name: String,
+    pub sort_order: u32,
+    pub tokens_usage: Vec<u64>,
+    pub total_tokens: u64,
+}

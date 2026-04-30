@@ -13,6 +13,51 @@ fn format_time(secs: i64) -> String {
     }
 }
 
+/// 获取模型用量详情（按需调用，非轮询）
+pub async fn fetch_model_usage(
+    app: &AppHandle,
+    start_time: &str,
+    end_time: &str,
+) -> Result<crate::events::ModelUsageData, String> {
+    let model_config = get_active_model_config(app)?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(15))
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
+
+    let url = format!("{}api/monitor/usage/model-usage", model_config.api_domain());
+
+    eprintln!("[ModelUsage] URL: {}", url);
+    eprintln!("[ModelUsage] startTime: {}, endTime: {}", start_time, end_time);
+
+    let response = client
+        .get(&url)
+        .query(&[("startTime", start_time), ("endTime", end_time)])
+        .header("Authorization", &model_config.api_key)
+        .header("Content-Type", "application/json")
+        .send()
+        .await
+        .map_err(|e| format!("HTTP request failed: {}", e))?;
+
+    let status = response.status();
+    eprintln!("[ModelUsage] Response status: {}", status);
+
+    let body = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response body: {}", e))?;
+    eprintln!("[ModelUsage] Response body (first 500 chars): {}", &body[..body.len().min(500)]);
+
+    let api_resp: crate::events::ModelUsageResponse = serde_json::from_str(&body)
+        .map_err(|e| format!("Failed to parse response: {} | body: {}", e, &body[..body.len().min(200)]))?;
+
+    if !api_resp.success {
+        return Err(format!("API returned error code: {}", api_resp.code));
+    }
+
+    api_resp.data.ok_or("API response missing data field".to_string())
+}
+
 /// 请求真实 API 获取用量数据
 pub async fn fetch_usage(app: &AppHandle) -> Result<UsageData, String> {
     // 从配置读取 API 参数
