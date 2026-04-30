@@ -7,20 +7,20 @@ const props = defineProps<{
   state: PetState
 }>()
 
-const tankW = 136
-const tankH = 20
-const pad = 2
-const innerW = tankW - pad * 2   // 132
-const innerH = tankH - pad * 2   // 16
-const rx = innerH / 2            // 8 → 胶囊圆角
+const tankW = 96
+const tankH = 10
+const pad = 1
+const innerW = tankW - pad * 2   // 94
+const innerH = tankH - pad * 2   // 8
+const rx = innerH / 2            // 4 → 胶囊圆角
 
-// 容器边框发光（由状态驱动）
+// 容器边框发光（由状态驱动，更柔和）
 const borderGlows: Record<PetState, string> = {
-  Fresh:   'rgba(52,211,153,0.35)',
-  Flow:    'rgba(96,165,250,0.35)',
-  Warning: 'rgba(251,191,36,0.35)',
-  Panic:   'rgba(248,113,113,0.45)',
-  Dead:    'rgba(107,114,128,0.2)',
+  Fresh:   'rgba(52,211,153,0.2)',
+  Flow:    'rgba(96,165,250,0.2)',
+  Warning: 'rgba(251,191,36,0.2)',
+  Panic:   'rgba(248,113,113,0.3)',
+  Dead:    'rgba(107,114,128,0.15)',
 }
 const glow = computed(() => borderGlows[props.state])
 
@@ -101,9 +101,9 @@ const remainColorLight = computed(() => `hsl(${hue.value}, 65%, 62%)`)
             :x="pad + 2"
             :y="pad + 1"
             :width="remainW - 4"
-            height="2"
-            rx="1"
-            fill="rgba(255,255,255,0.2)"
+            height="1"
+            rx="0.5"
+            fill="rgba(255,255,255,0.18)"
           />
         </g>
 
@@ -118,15 +118,15 @@ const remainColorLight = computed(() => `hsl(${hue.value}, 65%, 62%)`)
           stroke-width="0.8"
         />
 
-        <!-- 边框 + 发光 -->
+        <!-- 边框（极简） -->
         <rect
           :x="pad" :y="pad" :width="innerW" :height="innerH"
           :rx="rx"
           fill="none"
-          stroke="rgba(255,255,255,0.1)"
-          stroke-width="0.8"
+          stroke="rgba(255,255,255,0.08)"
+          stroke-width="0.5"
           class="tank-stroke"
-          :style="{ filter: `drop-shadow(0 0 3px ${glow})` }"
+          :style="{ filter: `drop-shadow(0 0 2px ${glow})` }"
         />
       </svg>
 
@@ -168,11 +168,11 @@ const remainColorLight = computed(() => `hsl(${hue.value}, 65%, 62%)`)
 .tank-percent {
   position: absolute;
   font-family: 'SF Mono', 'Cascadia Code', ui-monospace, monospace;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.3px;
-  color: rgba(255, 255, 255, 0.9);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.9);
   pointer-events: none;
   z-index: 5;
 }
