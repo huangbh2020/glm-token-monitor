@@ -8,10 +8,10 @@ const props = defineProps<{
 }>()
 
 // 电池尺寸
-const batteryW = 58
-const batteryH = 14
+const batteryW = 60
+const batteryH = 16
 const nubW = 2
-const nubH = 5.5
+const nubH = 6
 const borderR = 3
 const innerPad = 1.5
 
@@ -145,9 +145,9 @@ const textShadow = computed(() => {
 .battery-pct {
   position: absolute;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: -0.1px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
   pointer-events: none;
   z-index: 5;
   transition: color 0.4s ease, text-shadow 0.4s ease;
