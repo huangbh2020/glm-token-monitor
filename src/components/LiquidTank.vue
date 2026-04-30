@@ -7,13 +7,13 @@ const props = defineProps<{
   state: PetState
 }>()
 
-// 电池尺寸（Apple 风格）
-const batteryW = 52
-const batteryH = 12
+// 电池尺寸
+const batteryW = 58
+const batteryH = 14
 const nubW = 2
-const nubH = 5
-const borderR = 2.5
-const innerPad = 1.5  // 内部填充间距
+const nubH = 5.5
+const borderR = 3
+const innerPad = 1.5
 
 // 百分比
 const pct = computed(() => Math.round(Math.max(0, Math.min(100, props.percent))))
@@ -24,87 +24,109 @@ const fillW = computed(() => {
   return (pct.value / 100) * maxW
 })
 
-// Apple 风格颜色：
-// >=20% → 绿色, <20% → 红色
+// 填充颜色
 const fillColor = computed(() => {
-  if (pct.value <= 20) return '#FF3B30'   // Apple 红
-  if (pct.value <= 50) return '#34C759'   // Apple 绿（低电量也是绿，但你可以改黄）
-  return '#34C759'                         // Apple 绿
+  if (pct.value <= 20) return '#FF3B30'
+  return '#34C759'
 })
 
-// 低电量时背景变红框
+// 边框颜色
 const borderColor = computed(() => {
-  if (pct.value <= 10) return 'rgba(255,59,48,0.6)'
-  return 'rgba(255,255,255,0.25)'
+  if (pct.value <= 10) return 'rgba(255,59,48,0.5)'
+  return 'rgba(255,255,255,0.22)'
+})
+
+// 文字颜色（深色字在绿底上更清晰）
+const textColor = computed(() => {
+  if (pct.value <= 20) return '#FFFFFF'
+  return 'rgba(0, 0, 0, 0.75)'
+})
+
+// 文字阴影（让文字在任何背景上都可读）
+const textShadow = computed(() => {
+  if (pct.value <= 20) return '0 0.5px 1px rgba(0,0,0,0.5)'
+  return '0 0.5px 0 rgba(255,255,255,0.4)'
 })
 </script>
 
 <template>
   <div class="battery-wrap">
-    <!-- 电池主体 -->
-    <svg
-      :width="batteryW + nubW + 2"
-      :height="batteryH"
-      :viewBox="`0 0 ${batteryW + nubW + 2} ${batteryH}`"
-      class="battery-svg"
-    >
-      <!-- 电池正极凸起（右侧小块） -->
-      <rect
-        :x="batteryW + 1"
-        :y="(batteryH - nubH) / 2"
-        :width="nubW"
-        :height="nubH"
-        :rx="1"
-        fill="rgba(255,255,255,0.2)"
-      />
-
-      <!-- 电池外壳 -->
-      <rect
-        x="0" y="0"
-        :width="batteryW"
+    <div class="battery-container">
+      <!-- 电池主体 SVG -->
+      <svg
+        :width="batteryW + nubW + 2"
         :height="batteryH"
-        :rx="borderR"
-        fill="none"
-        :stroke="borderColor"
-        stroke-width="1"
-        class="battery-border"
-      />
+        :viewBox="`0 0 ${batteryW + nubW + 2} ${batteryH}`"
+        class="battery-svg"
+      >
+        <!-- 正极凸起 -->
+        <rect
+          :x="batteryW + 1"
+          :y="(batteryH - nubH) / 2"
+          :width="nubW"
+          :height="nubH"
+          :rx="1"
+          fill="rgba(255,255,255,0.18)"
+        />
 
-      <!-- 电池内部背景（深色底） -->
-      <rect
-        :x="innerPad"
-        :y="innerPad"
-        :width="batteryW - innerPad * 2"
-        :height="batteryH - innerPad * 2"
-        :rx="1"
-        fill="rgba(255,255,255,0.08)"
-      />
+        <!-- 外壳边框 -->
+        <rect
+          x="0" y="0"
+          :width="batteryW"
+          :height="batteryH"
+          :rx="borderR"
+          fill="none"
+          :stroke="borderColor"
+          stroke-width="1"
+          class="battery-border"
+        />
 
-      <!-- 电量填充 -->
-      <rect
-        :x="innerPad"
-        :y="innerPad"
-        :width="fillW"
-        :height="batteryH - innerPad * 2"
-        :rx="1"
-        :fill="fillColor"
-        class="battery-fill"
-      />
-    </svg>
+        <!-- 内部深色背景 -->
+        <rect
+          :x="innerPad"
+          :y="innerPad"
+          :width="batteryW - innerPad * 2"
+          :height="batteryH - innerPad * 2"
+          :rx="1.5"
+          fill="rgba(255,255,255,0.06)"
+        />
 
-    <!-- 百分比文字（电池右侧） -->
-    <span class="battery-pct" :class="{ low: pct <= 20 }">{{ pct }}%</span>
+        <!-- 电量填充 -->
+        <rect
+          :x="innerPad"
+          :y="innerPad"
+          :width="fillW"
+          :height="batteryH - innerPad * 2"
+          :rx="1.5"
+          :fill="fillColor"
+          class="battery-fill"
+        />
+      </svg>
+
+      <!-- 百分比文字（居中覆盖在电池上） -->
+      <span
+        class="battery-pct"
+        :style="{ color: textColor, textShadow: textShadow }"
+      >
+        {{ pct }}%
+      </span>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .battery-wrap {
   display: flex;
-  align-items: center;
-  gap: 4px;
   justify-content: center;
   margin-top: 2px;
   z-index: 10;
+}
+
+.battery-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .battery-svg {
@@ -121,16 +143,13 @@ const borderColor = computed(() => {
 }
 
 .battery-pct {
+  position: absolute;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
   letter-spacing: -0.1px;
-  transition: color 0.4s ease;
-  white-space: nowrap;
-}
-
-.battery-pct.low {
-  color: #FF3B30;
+  pointer-events: none;
+  z-index: 5;
+  transition: color 0.4s ease, text-shadow 0.4s ease;
 }
 </style>
