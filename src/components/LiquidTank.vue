@@ -7,56 +7,49 @@ const props = defineProps<{
   state: PetState
 }>()
 
-const tankW = 140
-const tankH = 30
+const tankW = 136
+const tankH = 20
 const pad = 2
-const innerW = tankW - pad * 2
-const innerH = tankH - pad * 2
+const innerW = tankW - pad * 2   // 132
+const innerH = tankH - pad * 2   // 16
 
-// 状态对应的表情图标
-const stateEmoji: Record<PetState, string> = {
-  Fresh:   '😊',
-  Flow:    '💪',
-  Warning: '😰',
-  Panic:   '😱',
-  Dead:    '💀',
-}
-
-// 液面颜色 - 更鲜艳活泼
-const gradientColors: Record<PetState, [string, string, string]> = {
-  Fresh:   ['#10B981', '#34D399', '#6EE7B7'],
-  Flow:    ['#3B82F6', '#60A5FA', '#93C5FD'],
-  Warning: ['#F59E0B', '#FBBF24', '#FCD34D'],
-  Panic:   ['#EF4444', '#F87171', '#FCA5A5'],
-  Dead:    ['#4B5563', '#6B7280', '#9CA3AF'],
-}
-
-// 容器边框发光色
+// 容器边框发光色（由状态驱动）
 const borderGlows: Record<PetState, string> = {
-  Fresh:   'rgba(52,211,153,0.5)',
-  Flow:    'rgba(96,165,250,0.5)',
-  Warning: 'rgba(251,191,36,0.5)',
-  Panic:   'rgba(248,113,113,0.6)',
-  Dead:    'rgba(107,114,128,0.3)',
+  Fresh:   'rgba(52,211,153,0.4)',
+  Flow:    'rgba(96,165,250,0.4)',
+  Warning: 'rgba(251,191,36,0.4)',
+  Panic:   'rgba(248,113,113,0.5)',
+  Dead:    'rgba(107,114,128,0.2)',
 }
 
-// 波浪振幅
+// 波浪振幅（由状态驱动）
 const stateAmplitudes: Record<PetState, number> = {
-  Fresh: 2.5, Flow: 2.5, Warning: 2, Panic: 4, Dead: 0.8,
+  Fresh: 2, Flow: 2, Warning: 1.5, Panic: 3, Dead: 0.5,
 }
 
-// 动画速度
+// 动画速度（由状态驱动）
 const stateDurations: Record<PetState, string> = {
   Fresh: '3s', Flow: '2.5s', Warning: '2s', Panic: '1s', Dead: '6s',
 }
 
-const colors    = computed(() => gradientColors[props.state])
 const glow      = computed(() => borderGlows[props.state])
-const emoji     = computed(() => stateEmoji[props.state])
 const amplitude = computed(() => stateAmplitudes[props.state])
 const duration  = computed(() => stateDurations[props.state])
 
-// 液面百分比（剩余量）
+// ─── 液面颜色：根据剩余百分比连续渐变 ───
+// 100% → 绿色(hue 140)，50% → 黄色(hue 50)，0% → 红色(hue 0)
+const liquidHue = computed(() => {
+  const p = Math.max(0, Math.min(100, props.percent))
+  // 非线性映射：低百分比时更快变红
+  const t = p / 100
+  return t * t * 100 + t * 40  // 0→0, 50→45, 100→140
+})
+
+const liquidColorTop    = computed(() => `hsl(${liquidHue.value}, 80%, 55%)`)
+const liquidColorBottom = computed(() => `hsl(${liquidHue.value}, 70%, 40%)`)
+const liquidColorMid    = computed(() => `hsl(${liquidHue.value}, 75%, 48%)`)
+
+// 百分比显示
 const percentDisplay = computed(() => Math.round(props.percent))
 
 // 液面高度
@@ -65,31 +58,35 @@ const fillHeight = computed(() => {
   return Math.max(h, 0)
 })
 
-// 波浪基准 Y 坐标（从底部算）
+// 波浪基准 Y
 const waveY = computed(() => tankH - pad - fillHeight.value)
 
-// 生成正弦波 SVG path
+// 生成波浪 SVG path（加宽覆盖范围避免边缘缝隙）
 function wavePath(y: number, amp: number): string {
   const a = Math.min(amp, fillHeight.value / 2)
   return [
-    `M -4 ${y}`,
-    `C 12 ${y - a}, 32 ${y + a}, 52 ${y}`,
-    `C 72 ${y - a}, 92 ${y + a}, 112 ${y}`,
-    `C 125 ${y - a}, 136 ${y + a}, 144 ${y}`,
-    `L 144 ${tankH} L -4 ${tankH} Z`,
+    `M -6 ${y}`,
+    `C 10 ${y - a}, 30 ${y + a}, 50 ${y}`,
+    `C 70 ${y - a}, 90 ${y + a}, 110 ${y}`,
+    `C 124 ${y - a}, 134 ${y + a}, 142 ${y}`,
+    `L 142 ${tankH} L -6 ${tankH} Z`,
   ].join(' ')
 }
 
 const waveFrontPath = computed(() => wavePath(waveY.value, amplitude.value))
 const waveBackPath  = computed(() => wavePath(waveY.value, amplitude.value * 0.6))
+
+// 文字颜色：液面亮时用深色字，液面暗时用亮色字
+const textColor = computed(() => {
+  const p = props.percent
+  if (p > 60) return 'rgba(255,255,255,0.95)'
+  if (p > 30) return 'rgba(255,255,255,0.9)'
+  return 'rgba(255,255,255,0.85)'
+})
 </script>
 
 <template>
-  <div class="liquid-tank-wrap" :class="`state-${state.toLowerCase()}`">
-    <!-- 左侧表情图标 -->
-    <span class="tank-emoji">{{ emoji }}</span>
-
-    <!-- 液面容器 -->
+  <div class="liquid-tank-wrap">
     <div class="tank-container">
       <svg
         :width="tankW"
@@ -99,21 +96,20 @@ const waveBackPath  = computed(() => wavePath(waveY.value, amplitude.value * 0.6
         class="liquid-tank"
       >
         <defs>
-          <!-- 胶囊裁剪区域 -->
-          <clipPath :id="`tank-clip-${state}`">
+          <clipPath id="tank-clip">
             <rect :x="pad" :y="pad" :width="innerW" :height="innerH" :rx="(innerH / 2)" />
           </clipPath>
 
-          <!-- 液面渐变（3色，更有层次） -->
-          <linearGradient :id="`liquid-grad-${state}`" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   :stop-color="colors[2]" stop-opacity="0.9" />
-            <stop offset="50%"  :stop-color="colors[0]" />
-            <stop offset="100%" :stop-color="colors[1]" />
+          <!-- 液面渐变：颜色随 percent 连续变化 -->
+          <linearGradient id="liquid-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   :stop-color="liquidColorTop" stop-opacity="0.85" />
+            <stop offset="50%"  :stop-color="liquidColorMid" />
+            <stop offset="100%" :stop-color="liquidColorBottom" />
           </linearGradient>
 
-          <!-- 液面高光渐变 -->
-          <linearGradient :id="`highlight-${state}`" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stop-color="white" stop-opacity="0.35" />
+          <!-- 液面高光 -->
+          <linearGradient id="highlight" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stop-color="white" stop-opacity="0.3" />
             <stop offset="100%" stop-color="white" stop-opacity="0" />
           </linearGradient>
         </defs>
@@ -123,53 +119,50 @@ const waveBackPath  = computed(() => wavePath(waveY.value, amplitude.value * 0.6
           :x="pad" :y="pad" :width="innerW" :height="innerH"
           :rx="(innerH / 2)"
           fill="rgba(10,10,15,0.9)"
-          class="tank-bg"
         />
 
-        <!-- 液面组（裁剪到胶囊内） -->
-        <g :clip-path="`url(#tank-clip-${state})`">
-          <!-- 背景波（低透明度，反向） -->
+        <!-- 液面（裁剪到胶囊内） -->
+        <g clip-path="url(#tank-clip)">
           <path
             :d="waveBackPath"
-            :fill="`url(#liquid-grad-${state})`"
+            fill="url(#liquid-grad)"
             opacity="0.35"
             class="wave wave-back"
             :style="{ animationDuration: `calc(${duration} * 1.5)` }"
           />
-          <!-- 前景波 -->
           <path
             :d="waveFrontPath"
-            :fill="`url(#liquid-grad-${state})`"
+            fill="url(#liquid-grad)"
             class="wave wave-front"
             :style="{ animationDuration: duration }"
           />
-          <!-- 液面高光条 -->
+          <!-- 高光条 -->
           <rect
             v-if="fillHeight > 2"
-            :x="pad + 4"
+            :x="pad + 6"
             :y="waveY + 1"
-            :width="innerW - 8"
-            height="2"
-            rx="1"
-            :fill="`url(#highlight-${state})`"
+            :width="innerW - 12"
+            height="1.5"
+            rx="0.75"
+            fill="url(#highlight)"
             class="wave-highlight"
           />
         </g>
 
-        <!-- 容器边框 + 发光 -->
+        <!-- 边框 + 发光 -->
         <rect
           :x="pad" :y="pad" :width="innerW" :height="innerH"
           :rx="(innerH / 2)"
           fill="none"
-          stroke="rgba(255,255,255,0.15)"
-          stroke-width="1"
+          stroke="rgba(255,255,255,0.12)"
+          stroke-width="0.8"
           class="tank-stroke"
-          :style="{ filter: `drop-shadow(0 0 4px ${glow})` }"
+          :style="{ filter: `drop-shadow(0 0 3px ${glow})` }"
         />
       </svg>
 
-      <!-- 百分比数字（覆盖在 SVG 上方） -->
-      <span class="tank-percent" :class="`pct-${state.toLowerCase()}`">
+      <!-- 百分比数字 -->
+      <span class="tank-percent" :style="{ color: textColor }">
         {{ percentDisplay }}%
       </span>
     </div>
@@ -179,28 +172,11 @@ const waveBackPath  = computed(() => wavePath(waveY.value, amplitude.value * 0.6
 <style scoped>
 .liquid-tank-wrap {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  justify-content: center;
   margin-top: 2px;
   z-index: 10;
-  padding: 0 4px;
 }
 
-/* 表情图标 */
-.tank-emoji {
-  font-size: 14px;
-  line-height: 1;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
-  animation: emojiBob 2s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-@keyframes emojiBob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-2px); }
-}
-
-/* 容器 */
 .tank-container {
   position: relative;
   display: flex;
@@ -213,17 +189,10 @@ const waveBackPath  = computed(() => wavePath(waveY.value, amplitude.value * 0.6
   overflow: visible;
 }
 
-/* 背景过渡 */
-.tank-bg {
-  transition: fill 0.6s ease;
-}
-
-/* 边框发光过渡 */
 .tank-stroke {
-  transition: stroke 0.6s ease, filter 0.6s ease;
+  transition: filter 0.6s ease;
 }
 
-/* 波浪动画 */
 .wave {
   will-change: transform;
 }
@@ -233,8 +202,6 @@ const waveBackPath  = computed(() => wavePath(waveY.value, amplitude.value * 0.6
 .wave-back {
   animation: waveShift 3.5s linear infinite reverse;
 }
-
-/* 高光跟随波浪 */
 .wave-highlight {
   will-change: transform;
   animation: waveShift 2.5s linear infinite;
@@ -245,23 +212,15 @@ const waveBackPath  = computed(() => wavePath(waveY.value, amplitude.value * 0.6
   to   { transform: translateX(-56px); }
 }
 
-/* 百分比数字 */
 .tank-percent {
   position: absolute;
   font-family: 'SF Mono', 'Cascadia Code', ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.5px;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.8), 0 0 6px rgba(0,0,0,0.5);
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.6);
   pointer-events: none;
   z-index: 5;
-  transition: color 0.5s ease;
+  transition: color 0.8s ease;
 }
-
-/* 按状态给数字加颜色倾向 */
-.pct-fresh   { color: #ECFDF5; }
-.pct-flow    { color: #EFF6FF; }
-.pct-warning { color: #FFFBEB; }
-.pct-panic   { color: #FEF2F2; }
-.pct-dead    { color: #D1D5DB; }
 </style>

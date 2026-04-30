@@ -223,7 +223,7 @@ watch([hasApiKey, showInfoPanel, displayMode], async ([hasKey, showPanel, mode])
     } else if (showPanel) {
       await invoke('resize_main_window', { width: 160, height: 240 })
     } else if (mode === 'pedestal') {
-      await invoke('resize_main_window', { width: 160, height: 165 })
+      await invoke('resize_main_window', { width: 160, height: 150 })
     } else {
       await invoke('resize_main_window', { width: 120, height: 120 })
     }
