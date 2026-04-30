@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { useTauriEvents } from '../composables/useTauriEvents'
 import { useTheme } from '../composables/useTheme'
 import { useSettings } from '../composables/useSettings'
+import { getStatusColor } from '../utils/statusColor'
 
 const { usageData, setupEventListener } = useTauriEvents()
 const { currentTheme, initTheme } = useTheme()
@@ -13,14 +14,6 @@ const { hasApiKey } = useSettings()
 const timePercent = computed(() => usageData.value.time_percent ?? 0)
 const tokensPercent = computed(() => usageData.value.tokens_percent ?? 0)
 const weeklyTokensPercent = computed(() => usageData.value.weekly_tokens_percent ?? 0)
-
-// 根据百分比获取状态颜色
-function getStatusColor(percent: number): string {
-  if (percent >= 96) return '#6B7280'
-  if (percent >= 81) return '#F97316'
-  if (percent >= 61) return '#F59E0B'
-  return '#3B82F6'
-}
 
 // 格式化重置时间（简化版）
 function formatResetTime(timestamp?: number): string {
