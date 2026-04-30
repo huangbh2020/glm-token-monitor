@@ -21,6 +21,8 @@ import LottieCat from './pets/LottieCat.vue'
 import LottieOctoyaki from './pets/LottieOctoyaki.vue'
 import LottieFixing from './pets/LottieFixing.vue'
 import LottieBicycle from './pets/LottieBicycle.vue'
+import LiquidTank from './LiquidTank.vue'
+import { getStatusColor } from '../utils/statusColor'
 
 const { displayMode } = useDisplayMode()
 const { loadConfig, setupConfigListener, config, basicConfig, hasApiKey } = useSettings()
@@ -180,14 +182,6 @@ async function openSettings() {
   }
 }
 
-// 根据百分比获取状态颜色
-function getStatusColor(percent: number): string {
-  if (percent >= 96) return '#6B7280'
-  if (percent >= 81) return '#F97316'
-  if (percent >= 61) return '#F59E0B'
-  return '#3B82F6'
-}
-
 // 双击处理 - 阻止全屏
 const handleDblClick = (event: MouseEvent) => {
   console.log('[DblClick] Preventing default behavior')
@@ -318,14 +312,13 @@ onUnmounted(() => {
 
     </div>
 
-    <!-- 底座展示模式 -->
+    <!-- 底座展示模式：液面能量槽 -->
     <transition name="pedestal-fade">
-      <div v-if="displayMode === 'pedestal' && !showInfoPanel" class="pet-pedestal" :class="`state-${petState.toLowerCase()}`">
-        <div class="pedestal-bar">
-          <div class="pedestal-fill" :style="{ width: (100 - tokensPercent) + '%' }"></div>
-        </div>
-        <span class="pedestal-text">{{ 100 - tokensPercent }}%</span>
-      </div>
+      <LiquidTank
+        v-if="displayMode === 'pedestal' && !showInfoPanel"
+        :percent="100 - tokensPercent"
+        :state="petState"
+      />
     </transition>
 
     <!-- API 配置提示气泡（未配置时显示） -->
@@ -797,62 +790,6 @@ onUnmounted(() => {
     transform: rotate(8deg);
   }
 }
-
-/* ── 底座展示模式 ── */
-.pet-pedestal {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  margin-top: 2px;
-  background: rgba(15, 15, 17, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  z-index: 10;
-  min-width: 120px;
-}
-
-.pet-pedestal.state-fresh { border-color: rgba(52, 211, 153, 0.25); box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 8px rgba(52,211,153,0.12); }
-.pet-pedestal.state-flow { border-color: rgba(96, 165, 250, 0.25); box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 8px rgba(96,165,250,0.12); }
-.pet-pedestal.state-warning { border-color: rgba(251, 191, 36, 0.3); box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 8px rgba(251,191,36,0.15); }
-.pet-pedestal.state-panic { border-color: rgba(248, 113, 113, 0.35); box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 12px rgba(248,113,113,0.2); }
-.pet-pedestal.state-dead { border-color: rgba(107, 114, 128, 0.2); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
-
-.pedestal-bar {
-  flex: 1;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.pedestal-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.5s ease, background 0.5s ease;
-}
-
-.state-fresh .pedestal-fill { background: linear-gradient(90deg, #34D399, #6EE7B7); }
-.state-flow .pedestal-fill { background: linear-gradient(90deg, #3B82F6, #60A5FA); }
-.state-warning .pedestal-fill { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
-.state-panic .pedestal-fill { background: linear-gradient(90deg, #EF4444, #F87171); }
-.state-dead .pedestal-fill { background: linear-gradient(90deg, #4B5563, #6B7280); }
-
-.pedestal-text {
-  font-family: 'SF Mono', ui-monospace, monospace;
-  font-size: 11px;
-  font-weight: 700;
-  min-width: 32px;
-  text-align: right;
-}
-
-.state-fresh .pedestal-text { color: #34D399; }
-.state-flow .pedestal-text { color: #60A5FA; }
-.state-warning .pedestal-text { color: #FBBF24; }
-.state-panic .pedestal-text { color: #F87171; }
-.state-dead .pedestal-text { color: #9CA3AF; }
 
 .pedestal-fade-enter-active,
 .pedestal-fade-leave-active {
