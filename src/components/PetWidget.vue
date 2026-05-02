@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useUsageState } from '../composables/useUsageState'
 import { useTauriEvents } from '../composables/useTauriEvents'
 import { useDisplayMode } from '../composables/useDisplayMode'
@@ -46,6 +46,7 @@ const { petType, currentAction, setPetType } = usePetAction()
 // 模型用量数据
 const { modelUsageData, isLoading: isModelLoading, error: modelError, activeTab, fetchModelUsage } = useModelUsage()
 const isExpanded = ref(false)
+const expandedPanelRef = ref<HTMLElement | null>(null)
 
 async function toggleExpanded() {
   if (!isExpanded.value) {
@@ -277,7 +278,7 @@ let countdownTimer: number | null = null
 let savedWindowPos: { x: number; y: number; w: number; h: number } | null = null
 
 // 监听 API Key 配置状态和信息面板状态，动态调整窗口大小
-watch([hasApiKey, showInfoPanel, displayMode, isExpanded, activeTab, petType, currentAction], async ([hasKey, showPanel, mode, expanded]) => {
+watch([hasApiKey, showInfoPanel, displayMode, isExpanded, activeTab, petType, currentAction, () => modelUsageData.value], async ([hasKey, showPanel, mode, expanded]) => {
   try {
     const { invoke } = await import('@tauri-apps/api/core')
     const { Window, PhysicalPosition } = await import('@tauri-apps/api/window')
@@ -293,9 +294,16 @@ watch([hasApiKey, showInfoPanel, displayMode, isExpanded, activeTab, petType, cu
         savedWindowPos = { x: pos.x, y: pos.y, w: size.width, h: size.height }
       }
 
-      const heights: Record<string, number> = { today: 380, '7days': 440, '30days': 520 }
-      await invoke('resize_main_window', { width: 340, height: heights[activeTab.value] || 380 })
+      // Set generous size first for content to render
+      await invoke('resize_main_window', { width: 340, height: 700 })
       await win.center()
+      await nextTick()
+      // Measure actual content and resize to fit
+      if (expandedPanelRef.value) {
+        const contentH = expandedPanelRef.value.scrollHeight + 16
+        await invoke('resize_main_window', { width: 340, height: Math.max(contentH, 200) })
+        await win.center()
+      }
     } else if (showPanel) {
       // 信息气泡：保存原始位置（仅首次），居中显示
       if (!savedWindowPos) {
@@ -527,7 +535,7 @@ onUnmounted(() => {
 
     <!-- 展开详情面板 -->
     <transition name="panel-expand">
-      <div v-if="isExpanded && hasApiKey" class="expanded-panel" :data-theme="currentTheme"
+      <div v-if="isExpanded && hasApiKey" ref="expandedPanelRef" class="expanded-panel" :data-theme="currentTheme"
         @mousedown.stop @click.stop @dblclick.stop>
         <!-- 顶部栏 -->
         <div class="expanded-header">
@@ -1252,8 +1260,6 @@ onUnmounted(() => {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 12px rgba(59, 130, 246, 0.15);
   backdrop-filter: blur(12px);
   pointer-events: auto;
-  max-height: calc(100% - 20px);
-  overflow-y: auto;
 }
 
 .expanded-panel[data-theme="light"] {
