@@ -24,7 +24,7 @@ import LottieBicycle from './pets/LottieBicycle.vue'
 import LiquidTank from './LiquidTank.vue'
 import { getStatusColor } from '../utils/statusColor'
 import { useModelUsage } from '../composables/useModelUsage'
-import UsageBarChart from './UsageBarChart.vue'
+import UsageAreaChart from './UsageAreaChart.vue'
 import UsageDailyBarChart from './UsageDailyBarChart.vue'
 import UsageLineChart from './UsageLineChart.vue'
 
@@ -56,6 +56,7 @@ async function toggleExpanded() {
     }
   } else {
     isExpanded.value = false
+    showInfoPanel.value = false
   }
 }
 
@@ -90,6 +91,34 @@ const petComponents = {
   'dog-walk': DogWalk,
   'dog-beg': DogBeg
 } as const
+
+// 根据宠物类型计算窗口尺寸（仅显示宠物时，窗口精确贴合宠物）
+const petPadding = 4 // 宠物周围留 4px 缓冲
+const petWindowSize = computed(() => {
+  const sizes: Record<string, { w: number; h: number }> = {
+    'spirit': { w: 80, h: 80 },
+    'ghost': { w: 80, h: 80 },
+    'polar': { w: 96, h: 96 },
+    'lottie-dog': { w: 110, h: 110 },
+    'procrastination': { w: 110, h: 110 },
+    'lottie-cat': { w: 110, h: 110 },
+    'octoyaki': { w: 110, h: 110 },
+    'fixing': { w: 150, h: 100 },
+    'bicycle': { w: 110, h: 110 },
+  }
+  // 猫咪和狗狗系列
+  if (currentAction.value.startsWith('cat-')) {
+    return { w: 80 + petPadding * 2, h: 80 + petPadding * 2 }
+  }
+  if (currentAction.value.startsWith('dog-')) {
+    return { w: 80 + petPadding * 2, h: 80 + petPadding * 2 }
+  }
+  const size = sizes[petType.value]
+  if (size) {
+    return { w: size.w + petPadding * 2, h: size.h + petPadding * 2 }
+  }
+  return { w: 88, h: 88 } // fallback: 80 + 4*2
+})
 
 // 双指标数据
 const timePercent = computed(() => usageData.value.time_percent ?? 0)
@@ -244,21 +273,59 @@ const DATA_REFRESH_INTERVAL = 60000 // 1分钟
 let dataRefreshTimer: number | null = null
 let countdownTimer: number | null = null
 
+// 展开前保存的窗口位置（用于收起后恢复）
+let savedWindowPos: { x: number; y: number; w: number; h: number } | null = null
+
 // 监听 API Key 配置状态和信息面板状态，动态调整窗口大小
-watch([hasApiKey, showInfoPanel, displayMode, isExpanded, activeTab], async ([hasKey, showPanel, mode, expanded]) => {
+watch([hasApiKey, showInfoPanel, displayMode, isExpanded, activeTab, petType, currentAction], async ([hasKey, showPanel, mode, expanded]) => {
   try {
     const { invoke } = await import('@tauri-apps/api/core')
+    const { Window, PhysicalPosition } = await import('@tauri-apps/api/window')
+    const win = Window.getCurrent()
+
     if (!hasKey) {
       await invoke('resize_main_window', { width: 160, height: 180 })
     } else if (expanded) {
+      // 展开前：仅首次保存窗口位置和尺寸（tab 切换时不覆盖）
+      if (!savedWindowPos) {
+        const pos = await win.outerPosition()
+        const size = await win.outerSize()
+        savedWindowPos = { x: pos.x, y: pos.y, w: size.width, h: size.height }
+      }
+
       const heights: Record<string, number> = { today: 380, '7days': 440, '30days': 520 }
       await invoke('resize_main_window', { width: 340, height: heights[activeTab.value] || 380 })
+      await win.center()
     } else if (showPanel) {
+      // 信息气泡：保存原始位置（仅首次），居中显示
+      if (!savedWindowPos) {
+        const pos = await win.outerPosition()
+        const size = await win.outerSize()
+        savedWindowPos = { x: pos.x, y: pos.y, w: size.width, h: size.height }
+      }
       await invoke('resize_main_window', { width: 160, height: 240 })
+      await win.center()
     } else if (mode === 'pedestal') {
       await invoke('resize_main_window', { width: 160, height: 150 })
     } else {
-      await invoke('resize_main_window', { width: 120, height: 120 })
+      const { w, h } = petWindowSize.value
+      await invoke('resize_main_window', { width: w, height: h })
+    }
+
+    // 收起详情回到信息气泡：重新居中
+    if (savedWindowPos && !expanded && showPanel) {
+      await win.center()
+    }
+
+    // 关闭所有面板：恢复原始位置
+    if (savedWindowPos && !expanded && !showPanel) {
+      const centerX = savedWindowPos.x + savedWindowPos.w / 2
+      const centerY = savedWindowPos.y + savedWindowPos.h / 2
+      const currentSize = await win.outerSize()
+      const newX = Math.round(centerX - currentSize.width / 2)
+      const newY = Math.round(centerY - currentSize.height / 2)
+      await win.setPosition(new PhysicalPosition(newX, newY))
+      savedWindowPos = null
     }
   } catch (err) {
     console.error('Failed to resize window:', err)
@@ -325,7 +392,7 @@ onUnmounted(() => {
 
 <template>
   <div class="pet-widget" :class="[`pet-${petState.toLowerCase()}`, { 'show-panel': showInfoPanel }]"
-  data-tauri-drag-region  
+  data-tauri-drag-region
   @mousedown="startDrag"
     @click="handleClick"
     @dblclick.prevent="handleDblClick">
@@ -349,6 +416,7 @@ onUnmounted(() => {
     <transition name="pedestal-fade">
       <LiquidTank
         v-if="displayMode === 'pedestal' && !showInfoPanel"
+        :class="{ 'pet-lottie-dog': petType === 'lottie-dog' }"
         :percent="100 - tokensPercent"
         :state="petState"
       />
@@ -368,7 +436,7 @@ onUnmounted(() => {
 
     <!-- 信息面板气泡（已配置 API 时，点击宠物显示） -->
     <transition name="panel-slide">
-      <div v-if="showInfoPanel && hasApiKey" class="info-bubble" :data-theme="currentTheme"
+      <div v-if="showInfoPanel && hasApiKey && !isExpanded" class="info-bubble" :data-theme="currentTheme"
         @mousedown.stop
         @click.stop
         @dblclick.stop>
@@ -464,7 +532,7 @@ onUnmounted(() => {
         <!-- 顶部栏 -->
         <div class="expanded-header">
           <span class="expanded-title">用量详情</span>
-          <button class="info-btn close" @click="isExpanded = false" title="收起">
+          <button class="info-btn close" @click="isExpanded = false; showInfoPanel = false" title="收起">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M18 6L6 18M6 6l12 12"/>
             </svg>
@@ -521,7 +589,7 @@ onUnmounted(() => {
           </div>
 
           <!-- 图表展示 -->
-          <UsageBarChart v-if="activeTab === 'today'" :data="modelUsageData" />
+          <UsageAreaChart v-if="activeTab === 'today'" :data="modelUsageData" />
           <UsageDailyBarChart v-else-if="activeTab === '7days'" :data="modelUsageData" />
           <UsageLineChart v-else :data="modelUsageData" />
         </template>
@@ -538,7 +606,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   background: transparent !important;
   position: relative;
   cursor: pointer;
@@ -903,6 +971,10 @@ onUnmounted(() => {
   75% {
     transform: rotate(8deg);
   }
+}
+
+.pet-lottie-dog {
+  margin-top: -12px;
 }
 
 .pedestal-fade-enter-active,

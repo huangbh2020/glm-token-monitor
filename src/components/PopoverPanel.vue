@@ -22,7 +22,7 @@ import LottieOctoyaki from './pets/LottieOctoyaki.vue'
 import LottieFixing from './pets/LottieFixing.vue'
 import LottieBicycle from './pets/LottieBicycle.vue'
 import { useModelUsage } from '../composables/useModelUsage'
-import UsageBarChart from './UsageBarChart.vue'
+import UsageAreaChart from './UsageAreaChart.vue'
 import UsageDailyBarChart from './UsageDailyBarChart.vue'
 import UsageLineChart from './UsageLineChart.vue'
 
@@ -52,6 +52,7 @@ async function toggleExpanded() {
     }
   } else {
     isExpanded.value = false
+    showInfoPanel.value = false
   }
 }
 
@@ -306,7 +307,7 @@ onUnmounted(() => {
 
     <!-- 底座展示模式 -->
     <transition name="pedestal-fade">
-      <div v-if="displayMode === 'pedestal' && !showInfoPanel" class="pet-pedestal" :class="`state-${petState.toLowerCase()}`">
+      <div v-if="displayMode === 'pedestal' && !showInfoPanel" class="pet-pedestal" :class="[`state-${petState.toLowerCase()}`, { 'pet-lottie-dog': petType === 'lottie-dog' }]">
         <div class="pedestal-bar">
           <div class="pedestal-fill" :style="{ width: (100 - tokensPercent) + '%' }"></div>
         </div>
@@ -328,7 +329,7 @@ onUnmounted(() => {
 
     <!-- 信息面板气泡 -->
     <transition name="panel-slide">
-      <div v-if="showInfoPanel && hasApiKey" class="info-bubble" :data-theme="currentTheme"
+      <div v-if="showInfoPanel && hasApiKey && !isExpanded" class="info-bubble" :data-theme="currentTheme"
         @click.stop>
         <!-- 顶部栏 -->
         <div class="info-header">
@@ -419,7 +420,7 @@ onUnmounted(() => {
         @mousedown.stop @click.stop @dblclick.stop>
         <div class="expanded-header">
           <span class="expanded-title">用量详情</span>
-          <button class="info-btn close" @click="isExpanded = false" title="收起">
+          <button class="info-btn close" @click="isExpanded = false; showInfoPanel = false" title="收起">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path d="M18 6L6 18M6 6l12 12"/>
             </svg>
@@ -464,7 +465,7 @@ onUnmounted(() => {
             </button>
           </div>
           <!-- 图表展示 -->
-          <UsageBarChart v-if="activeTab === 'today'" :data="modelUsageData" />
+          <UsageAreaChart v-if="activeTab === 'today'" :data="modelUsageData" />
           <UsageDailyBarChart v-else-if="activeTab === '7days'" :data="modelUsageData" />
           <UsageLineChart v-else :data="modelUsageData" />
         </template>
@@ -727,6 +728,10 @@ onUnmounted(() => {
 .state-warning .pedestal-text { color: #FBBF24; }
 .state-panic .pedestal-text { color: #F87171; }
 .state-dead .pedestal-text { color: #9CA3AF; }
+
+.pet-lottie-dog {
+  margin-top: -12px;
+}
 
 .pedestal-fade-enter-active,
 .pedestal-fade-leave-active {

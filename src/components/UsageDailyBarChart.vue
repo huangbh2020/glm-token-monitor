@@ -44,6 +44,7 @@ const bars = computed(() =>
     x: i * (barWidth + gap),
     height: Math.max(2, (d.total / maxVal.value) * barHeight),
     y: barHeight - Math.max(2, (d.total / maxVal.value) * barHeight),
+    color: d.total === 0 ? 'var(--bar-empty)' : '#60a5fa',
   }))
 )
 
@@ -68,7 +69,7 @@ function formatTokens(value: number): string {
         :y="b.y"
         :width="barWidth"
         :height="b.height"
-        :fill="b.total === 0 ? 'var(--bar-empty)' : 'var(--bar-fill)'"
+        :fill="b.color"
         rx="3"
       >
         <title>{{ b.label }} - {{ formatTokens(b.total) }} tokens</title>
@@ -98,7 +99,13 @@ function formatTokens(value: number): string {
 <style scoped>
 .daily-bar-chart {
   overflow-x: auto;
+  overflow-y: hidden;
   padding: 4px 0;
+  scrollbar-width: none;
+}
+
+.daily-bar-chart::-webkit-scrollbar {
+  display: none;
 }
 
 .empty-hint {
@@ -134,12 +141,10 @@ rect:hover {
 }
 
 :root {
-  --bar-fill: #39d353;
   --bar-empty: #161b22;
 }
 
 [data-theme="light"] {
-  --bar-fill: #216e39;
   --bar-empty: #ebedf0;
 }
 </style>

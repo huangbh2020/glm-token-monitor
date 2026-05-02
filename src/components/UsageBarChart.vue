@@ -26,7 +26,7 @@ const bars = computed(() =>
     hour: i,
     value: val,
     height: Math.max(2, (val / maxVal.value) * barHeight),
-    color: val === 0 ? 'var(--bar-empty)' : 'var(--bar-fill)',
+    color: val === 0 ? 'var(--bar-empty)' : '#60a5fa',
   }))
 )
 </script>
@@ -63,7 +63,13 @@ const bars = computed(() =>
 <style scoped>
 .bar-chart {
   overflow-x: auto;
+  overflow-y: hidden;
   padding: 4px 0;
+  scrollbar-width: none;
+}
+
+.bar-chart::-webkit-scrollbar {
+  display: none;
 }
 
 .bar-svg {
@@ -86,12 +92,10 @@ rect:hover {
 }
 
 :root {
-  --bar-fill: #39d353;
   --bar-empty: #161b22;
 }
 
 [data-theme="light"] {
-  --bar-fill: #216e39;
   --bar-empty: #ebedf0;
 }
 </style>
