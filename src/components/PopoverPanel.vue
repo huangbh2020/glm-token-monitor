@@ -21,6 +21,8 @@ import LottieCat from './pets/LottieCat.vue'
 import LottieOctoyaki from './pets/LottieOctoyaki.vue'
 import LottieFixing from './pets/LottieFixing.vue'
 import LottieBicycle from './pets/LottieBicycle.vue'
+import LiquidTank from './LiquidTank.vue'
+import { getStatusColor } from '../utils/statusColor'
 import { useModelUsage } from '../composables/useModelUsage'
 import UsageAreaChart from './UsageAreaChart.vue'
 import UsageDailyBarChart from './UsageDailyBarChart.vue'
@@ -78,6 +80,36 @@ const petComponents = {
   'dog-walk': DogWalk,
   'dog-beg': DogBeg
 } as const
+
+// 根据宠物类型计算窗口尺寸（仅显示宠物时，窗口精确贴合宠物）
+const petPadding = 4
+const petWindowSize = computed(() => {
+  const sizes: Record<string, { w: number; h: number }> = {
+    'spirit': { w: 80, h: 80 },
+    'ghost': { w: 80, h: 80 },
+    'polar': { w: 96, h: 96 },
+    'lottie-dog': { w: 110, h: 110 },
+    'procrastination': { w: 110, h: 110 },
+    'lottie-cat': { w: 110, h: 110 },
+    'octoyaki': { w: 110, h: 110 },
+    'fixing': { w: 150, h: 100 },
+    'bicycle': { w: 110, h: 110 },
+  }
+  if (currentAction.value.startsWith('cat-')) {
+    return { w: 80 + petPadding * 2, h: 80 + petPadding * 2 }
+  }
+  if (currentAction.value.startsWith('dog-')) {
+    return { w: 80 + petPadding * 2, h: 80 + petPadding * 2 }
+  }
+  const size = sizes[petType.value]
+  if (size) {
+    return { w: size.w + petPadding * 2, h: size.h + petPadding * 2 }
+  }
+  return { w: 88, h: 88 }
+})
+
+// 展开前保存的窗口位置（用于收起后恢复）
+let savedWindowPos: { x: number; y: number; w: number; h: number } | null = null
 
 const timePercent = computed(() => usageData.value.time_percent ?? 0)
 const tokensPercent = computed(() => usageData.value.tokens_percent ?? 0)
@@ -170,14 +202,6 @@ const handleDblClick = (event: MouseEvent) => {
   event.stopPropagation()
 }
 
-function togglePanel() {
-  if (!hasApiKey.value) {
-    openSettings()
-    return
-  }
-  showInfoPanel.value = !showInfoPanel.value
-}
-
 function closeInfoPanel() {
   showInfoPanel.value = false
 }
@@ -190,13 +214,6 @@ async function openSettings() {
   } catch (err) {
     console.error('Open settings failed:', err)
   }
-}
-
-function getStatusColor(percent: number): string {
-  if (percent >= 96) return '#6B7280'
-  if (percent >= 81) return '#F97316'
-  if (percent >= 61) return '#F59E0B'
-  return '#3B82F6'
 }
 
 async function refreshUsageData() {
@@ -232,21 +249,50 @@ function setupDataRefreshTimer() {
 }
 
 // 监听状态变化，动态调整窗口大小（与 PetWidget 一致）
-watch([hasApiKey, showInfoPanel, displayMode, hasWeeklyLimit, isExpanded, activeTab], async ([hasKey, showPanel, mode]) => {
+watch([hasApiKey, showInfoPanel, displayMode, isExpanded, activeTab, petType, currentAction], async ([hasKey, showPanel, mode, expanded]) => {
   try {
     const { invoke } = await import('@tauri-apps/api/core')
+    const { Window, PhysicalPosition } = await import('@tauri-apps/api/window')
+    const win = Window.getCurrent()
+
     if (!hasKey) {
       await invoke('resize_main_window', { width: 160, height: 180 })
-    } else if (isExpanded.value) {
+    } else if (expanded) {
+      if (!savedWindowPos) {
+        const pos = await win.outerPosition()
+        const size = await win.outerSize()
+        savedWindowPos = { x: pos.x, y: pos.y, w: size.width, h: size.height }
+      }
       const heights: Record<string, number> = { today: 380, '7days': 440, '30days': 520 }
       await invoke('resize_main_window', { width: 340, height: heights[activeTab.value] || 380 })
+      await win.center()
     } else if (showPanel) {
-      const panelHeight = hasWeeklyLimit.value ? 220 : 180
-      await invoke('resize_main_window', { width: 154, height: panelHeight })
+      if (!savedWindowPos) {
+        const pos = await win.outerPosition()
+        const size = await win.outerSize()
+        savedWindowPos = { x: pos.x, y: pos.y, w: size.width, h: size.height }
+      }
+      await invoke('resize_main_window', { width: 160, height: 240 })
+      await win.center()
     } else if (mode === 'pedestal') {
       await invoke('resize_main_window', { width: 160, height: 150 })
     } else {
-      await invoke('resize_main_window', { width: 120, height: 120 })
+      const { w, h } = petWindowSize.value
+      await invoke('resize_main_window', { width: w, height: h })
+    }
+
+    if (savedWindowPos && !expanded && showPanel) {
+      await win.center()
+    }
+
+    if (savedWindowPos && !expanded && !showPanel) {
+      const centerX = savedWindowPos.x + savedWindowPos.w / 2
+      const centerY = savedWindowPos.y + savedWindowPos.h / 2
+      const currentSize = await win.outerSize()
+      const newX = Math.round(centerX - currentSize.width / 2)
+      const newY = Math.round(centerY - currentSize.height / 2)
+      await win.setPosition(new PhysicalPosition(newX, newY))
+      savedWindowPos = null
     }
   } catch (err) {
     console.error('Failed to resize window:', err)
@@ -305,14 +351,14 @@ onUnmounted(() => {
 
     </div>
 
-    <!-- 底座展示模式 -->
+    <!-- 底座展示模式：液面能量槽 -->
     <transition name="pedestal-fade">
-      <div v-if="displayMode === 'pedestal' && !showInfoPanel" class="pet-pedestal" :class="[`state-${petState.toLowerCase()}`, { 'pet-lottie-dog': petType === 'lottie-dog' }]">
-        <div class="pedestal-bar">
-          <div class="pedestal-fill" :style="{ width: (100 - tokensPercent) + '%' }"></div>
-        </div>
-        <span class="pedestal-text">{{ 100 - tokensPercent }}%</span>
-      </div>
+      <LiquidTank
+        v-if="displayMode === 'pedestal' && !showInfoPanel"
+        :class="{ 'pet-lottie-dog': petType === 'lottie-dog' }"
+        :percent="100 - tokensPercent"
+        :state="petState"
+      />
     </transition>
 
     <!-- API 配置提示气泡（未配置时显示） -->
@@ -672,62 +718,6 @@ onUnmounted(() => {
   25% { transform: rotate(-8deg); }
   75% { transform: rotate(8deg); }
 }
-
-/* ── 底座展示模式 ── */
-.pet-pedestal {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  margin-top: 2px;
-  background: rgba(15, 15, 17, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  z-index: 10;
-  min-width: 120px;
-}
-
-.pet-pedestal.state-fresh { border-color: rgba(52, 211, 153, 0.25); box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 8px rgba(52,211,153,0.12); }
-.pet-pedestal.state-flow { border-color: rgba(96, 165, 250, 0.25); box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 8px rgba(96,165,250,0.12); }
-.pet-pedestal.state-warning { border-color: rgba(251, 191, 36, 0.3); box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 8px rgba(251,191,36,0.15); }
-.pet-pedestal.state-panic { border-color: rgba(248, 113, 113, 0.35); box-shadow: 0 2px 12px rgba(0,0,0,0.4), 0 0 12px rgba(248,113,113,0.2); }
-.pet-pedestal.state-dead { border-color: rgba(107, 114, 128, 0.2); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
-
-.pedestal-bar {
-  flex: 1;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.pedestal-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.5s ease, background 0.5s ease;
-}
-
-.state-fresh .pedestal-fill { background: linear-gradient(90deg, #34D399, #6EE7B7); }
-.state-flow .pedestal-fill { background: linear-gradient(90deg, #3B82F6, #60A5FA); }
-.state-warning .pedestal-fill { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
-.state-panic .pedestal-fill { background: linear-gradient(90deg, #EF4444, #F87171); }
-.state-dead .pedestal-fill { background: linear-gradient(90deg, #4B5563, #6B7280); }
-
-.pedestal-text {
-  font-family: 'SF Mono', ui-monospace, monospace;
-  font-size: 11px;
-  font-weight: 700;
-  min-width: 32px;
-  text-align: right;
-}
-
-.state-fresh .pedestal-text { color: #34D399; }
-.state-flow .pedestal-text { color: #60A5FA; }
-.state-warning .pedestal-text { color: #FBBF24; }
-.state-panic .pedestal-text { color: #F87171; }
-.state-dead .pedestal-text { color: #9CA3AF; }
 
 .pet-lottie-dog {
   margin-top: -12px;
