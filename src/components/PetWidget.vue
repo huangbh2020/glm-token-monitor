@@ -100,11 +100,11 @@ const petWindowSize = computed(() => {
     'spirit': { w: 80, h: 80 },
     'ghost': { w: 80, h: 80 },
     'polar': { w: 96, h: 96 },
-    'lottie-dog': { w: 110, h: 110 },
+    'lottie-dog': { w: 100, h: 110 },
     'procrastination': { w: 110, h: 110 },
     'lottie-cat': { w: 110, h: 110 },
     'octoyaki': { w: 110, h: 110 },
-    'fixing': { w: 150, h: 100 },
+    'fixing': { w: 110, h: 60 },
     'bicycle': { w: 110, h: 110 },
   }
   // 猫咪和狗狗系列
@@ -274,6 +274,60 @@ const DATA_REFRESH_INTERVAL = 60000 // 1分钟
 let dataRefreshTimer: number | null = null
 let countdownTimer: number | null = null
 
+// 点击穿透：轮询光标位置，动态切换 setIgnoreCursorEvents
+let clickThroughTimer: number | null = null
+let isCurrentlyIgnoring = false
+
+// 鼠标进入宠物区域时立即关闭穿透（不等轮询）
+async function onPetMouseEnter() {
+  if (isCurrentlyIgnoring) {
+    try {
+      const { Window } = await import('@tauri-apps/api/window')
+      await Window.getCurrent().setIgnoreCursorEvents(false)
+      isCurrentlyIgnoring = false
+    } catch (e) { /* ignore */ }
+  }
+}
+
+async function updateClickThrough() {
+  // 展开面板或信息面板打开时，保持窗口可交互
+  if (isExpanded.value || showInfoPanel.value) {
+    if (isCurrentlyIgnoring) {
+      try {
+        const { Window } = await import('@tauri-apps/api/window')
+        await Window.getCurrent().setIgnoreCursorEvents(false)
+        isCurrentlyIgnoring = false
+      } catch (e) { /* ignore */ }
+    }
+    return
+  }
+
+  try {
+    const { invoke } = await import('@tauri-apps/api/core')
+    const { Window } = await import('@tauri-apps/api/window')
+    const win = Window.getCurrent()
+
+    const [cursor, pos, size] = await Promise.all([
+      invoke<{ x: number; y: number }>('get_cursor_position'),
+      win.outerPosition(),
+      win.outerSize(),
+    ])
+
+    const margin = 8
+    const overWindow = cursor.x >= pos.x - margin && cursor.x <= pos.x + size.width + margin
+      && cursor.y >= pos.y - margin && cursor.y <= pos.y + size.height + margin
+
+    const shouldIgnore = !overWindow
+
+    if (shouldIgnore !== isCurrentlyIgnoring) {
+      await win.setIgnoreCursorEvents(shouldIgnore)
+      isCurrentlyIgnoring = shouldIgnore
+    }
+  } catch (e) {
+    // 静默处理
+  }
+}
+
 // 展开前保存的窗口位置（用于收起后恢复）
 let savedWindowPos: { x: number; y: number; w: number; h: number } | null = null
 
@@ -390,30 +444,34 @@ onMounted(async () => {
   } catch (err) {
     console.error('Enforce always on top failed:', err)
   }
+
+  // 启动点击穿透轮询（每 80ms 检测光标位置）
+  clickThroughTimer = window.setInterval(updateClickThrough, 80)
 })
 
 onUnmounted(() => {
   if (dataRefreshTimer) clearInterval(dataRefreshTimer)
   if (countdownTimer) clearInterval(countdownTimer)
+  if (clickThroughTimer) clearInterval(clickThroughTimer)
 })
 </script>
 
 <template>
   <div class="pet-widget" :class="[`pet-${petState.toLowerCase()}`, { 'show-panel': showInfoPanel }]"
-  data-tauri-drag-region
   @mousedown="startDrag"
     @click="handleClick"
     @dblclick.prevent="handleDblClick">
     <!-- 宠物 -->
-    <div class="pet-container" :class="{ hidden: showInfoPanel && hasApiKey }">
+    <div class="pet-container" data-tauri-drag-region :class="{ hidden: showInfoPanel && hasApiKey }"
+      @mouseenter="onPetMouseEnter">
       <JellySpirit v-if="petType === 'spirit'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="80" :height="80" />
       <PixelGhost v-else-if="petType === 'ghost'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="80" :height="80" />
       <PolarBear v-else-if="petType === 'polar'" :state="petState" :width="96" :height="96" />
-      <LottieDog v-else-if="petType === 'lottie-dog'" :state="petState" :width="110" :height="110" />
+      <LottieDog v-else-if="petType === 'lottie-dog'" :state="petState" :width="110" :height="90" />
       <LottieProcrastination v-else-if="petType === 'procrastination'" :state="petState" :width="110" :height="110" />
       <LottieCat v-else-if="petType === 'lottie-cat'" :state="petState" :width="110" :height="110" />
       <LottieOctoyaki v-else-if="petType === 'octoyaki'" :state="petState" :width="110" :height="110" />
-      <LottieFixing v-else-if="petType === 'fixing'" :state="petState" :width="150" :height="100" />
+      <LottieFixing v-else-if="petType === 'fixing'" :state="petState" :width="110" :height="80" />
       <LottieBicycle v-else-if="petType === 'bicycle'" :state="petState" :width="110" :height="110" />
       <CatGifViewer v-else-if="currentAction.startsWith('cat-')" :action="currentAction" :width="80" :height="80" />
       <component v-else :is="petComponents[currentAction as keyof typeof petComponents]" :key="currentAction" />
@@ -617,15 +675,13 @@ onUnmounted(() => {
   justify-content: center;
   background: transparent !important;
   position: relative;
-  cursor: pointer;
+  cursor: default;
   user-select: none;
-  pointer-events: auto;
+  pointer-events: none;
   border-radius: 8px;
   overflow: visible;
-  -webkit-app-region: drag;
   padding-top: 8px;
 }
-.pet-widget:active { cursor: pointer; }
 
 .pet-container {
   position: relative;
@@ -634,6 +690,9 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-app-region: drag;
 }
 
 .pet-container.hidden {

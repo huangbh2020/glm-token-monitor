@@ -12,8 +12,8 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  width: 140,
-  height: 94,
+  width: 110,
+  height: 80,
   state: 'Fresh'
 })
 

@@ -31,6 +31,7 @@ pub fn run() {
             claude_profile::switch_profile_handler,
             claude_profile::get_claude_config_path_cmd,
             claude_profile::set_claude_config_path_handler,
+            commands::get_cursor_position,
         ])
         .setup(|app| {
             // Windows 平台：设置完全透明无边框窗口
@@ -39,7 +40,6 @@ pub fn run() {
                 use tauri::Manager;
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.set_decorations(false);
-                    // 不要使用 set_ignore_cursor_events，它会阻止鼠标事件
                 }
             }
 
