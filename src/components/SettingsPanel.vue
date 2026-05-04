@@ -385,6 +385,7 @@ onUnmounted(() => {
           <div class="pet-selector">
             <label
               v-for="pet in [
+                { value: 'dog', label: '像素小狗', desc: 'Sprite Dog' },
                 { value: 'lottie-dog', label: '打字小狗', desc: 'Typing Dog' },
                 { value: 'procrastination', label: '拖延症', desc: 'Procrastination' },
                 { value: 'octoyaki', label: '章鱼烧', desc: 'Octoyaki Juggle' },

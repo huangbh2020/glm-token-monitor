@@ -12,6 +12,7 @@ import DogSit from './pets/DogSit.vue'
 import DogBark from './pets/DogBark.vue'
 import DogWalk from './pets/DogWalk.vue'
 import DogBeg from './pets/DogBeg.vue'
+import SpriteDog from './pets/SpriteDog.vue'
 import JellySpirit from './pets/JellySpirit.vue'
 import PixelGhost from './pets/PixelGhost.vue'
 import PolarBear from './pets/PolarBear.vue'
@@ -474,6 +475,7 @@ onUnmounted(() => {
       <LottieFixing v-else-if="petType === 'fixing'" :state="petState" :width="110" :height="80" />
       <LottieBicycle v-else-if="petType === 'bicycle'" :state="petState" :width="110" :height="110" />
       <CatGifViewer v-else-if="currentAction.startsWith('cat-')" :action="currentAction" :width="80" :height="80" />
+      <SpriteDog v-else-if="currentAction.startsWith('dog-')" :action="currentAction" :width="80" :height="80" :fps="10" />
       <component v-else :is="petComponents[currentAction as keyof typeof petComponents]" :key="currentAction" />
 
     </div>
