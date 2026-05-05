@@ -15,6 +15,8 @@ import { useModelUsage } from '../composables/useModelUsage'
 import UsageAreaChart from './UsageAreaChart.vue'
 import UsageDailyBarChart from './UsageDailyBarChart.vue'
 import UsageLineChart from './UsageLineChart.vue'
+import QuickCapture from './QuickCapture.vue'
+import { useTodo } from '../composables/useTodo'
 
 const { displayMode } = useDisplayMode()
 const { loadConfig, setupConfigListener, config, basicConfig, hasApiKey } = useSettings()
@@ -31,6 +33,9 @@ const { petType, currentAction, setPetType } = usePetAction()
 
 // 模型用量数据
 const { modelUsageData, isLoading: isModelLoading, error: modelError, activeTab, fetchModelUsage } = useModelUsage()
+
+// Todo 功能
+const { pendingCount } = useTodo()
 const isExpanded = ref(false)
 const expandedPanelRef = ref<HTMLElement | null>(null)
 
@@ -166,9 +171,15 @@ const handleClick = async (event: MouseEvent) => {
   }
 }
 
-const handleDblClick = (event: MouseEvent) => {
+const handleDblClick = async (event: MouseEvent) => {
   event.preventDefault()
   event.stopPropagation()
+  try {
+    const { invoke } = await import('@tauri-apps/api/core')
+    await invoke('open_todo_panel')
+  } catch (err) {
+    console.error('Open todo panel failed:', err)
+  }
 }
 
 function closeInfoPanel() {
@@ -324,8 +335,10 @@ onUnmounted(() => {
     <div class="pet-container" :class="{ hidden: showInfoPanel && hasApiKey }">
       <LottieDog v-if="petType === 'lottie-dog'" :state="petState" :width="96" :height="96" />
       <LottieFixing v-else-if="petType === 'fixing'" :state="petState" :width="120" :height="80" />
-
     </div>
+
+    <!-- 快速录入浮窗 -->
+    <QuickCapture />
 
     <!-- 底座展示模式：液面能量槽 -->
     <transition name="pedestal-fade">

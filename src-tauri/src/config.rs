@@ -14,6 +14,8 @@ pub struct AppConfig {
     pub pet_config: PetConfig,
     #[serde(default)]
     pub basic_config: BasicConfig,
+    #[serde(default)]
+    pub todo_config: TodoConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,6 +62,26 @@ fn default_enable_glow() -> bool {
 
 fn default_theme() -> String {
     "dark".to_string()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TodoConfig {
+    pub storage_path: Option<String>,
+    #[serde(default = "default_retention_days")]
+    pub retention_days: u32,
+}
+
+fn default_retention_days() -> u32 {
+    90
+}
+
+impl Default for TodoConfig {
+    fn default() -> Self {
+        Self {
+            storage_path: None,
+            retention_days: 90,
+        }
+    }
 }
 
 impl Default for BasicConfig {
@@ -137,6 +159,7 @@ impl Default for AppConfig {
             display_config: DisplayConfig::default(),
             pet_config: PetConfig::default(),
             basic_config: BasicConfig::default(),
+            todo_config: TodoConfig::default(),
         }
     }
 }
@@ -222,6 +245,7 @@ pub fn load_config(app: &AppHandle) -> Result<AppConfig, String> {
                     display_config: legacy_config.display_config.unwrap_or_default(),
                     pet_config: PetConfig::default(),
                     basic_config: BasicConfig::default(),
+                    todo_config: TodoConfig::default(),
                 };
                 // 保存迁移后的配置
                 save_config(app, &migrated_config)?;

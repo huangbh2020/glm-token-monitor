@@ -8,11 +8,13 @@ mod settings_commands;
 mod tray;
 mod windows;
 mod claude_profile;
+mod todo;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             commands::get_current_usage,
             commands::get_model_usage,
@@ -32,6 +34,16 @@ pub fn run() {
             claude_profile::get_claude_config_path_cmd,
             claude_profile::set_claude_config_path_handler,
             commands::get_cursor_position,
+            todo::todo_add_item,
+            todo::todo_toggle_item,
+            todo::todo_delete_item,
+            todo::todo_get_day,
+            todo::todo_get_week,
+            todo::todo_copy_day,
+            todo::todo_copy_week,
+            todo::todo_get_pending_count,
+            windows::open_todo_panel,
+            windows::close_todo_panel,
         ])
         .setup(|app| {
             // Windows 平台：设置完全透明无边框窗口
@@ -57,6 +69,24 @@ pub fn run() {
             // 初始化配置（确保配置文件存在）
             if let Err(e) = config::load_config(app.handle()) {
                 eprintln!("Failed to initialize config: {}", e);
+            }
+
+            // 清理过期 todo 数据
+            todo::run_cleanup(app.handle());
+
+            // 注册全局快捷键：Cmd+Shift+T (macOS) / Ctrl+Shift+T (Windows)
+            {
+                use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
+                let shortcut = Shortcut::new(
+                    Some(Modifiers::SUPER | Modifiers::SHIFT),
+                    Code::KeyT,
+                );
+                if let Err(e) = app.global_shortcut().on_shortcut(shortcut, move |_app, _shortcut, _event| {
+                    use tauri::Emitter;
+                    let _ = _app.emit("show-quick-capture", ());
+                }) {
+                    eprintln!("Failed to register global shortcut: {}", e);
+                }
             }
 
             // 创建系统托盘（Windows 和 macOS）

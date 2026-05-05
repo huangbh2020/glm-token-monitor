@@ -19,6 +19,7 @@ pub fn create_system_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Err
     let show_item = MenuItem::with_id(app, "show", "显示宠物", true, None::<&str>)?;
     let hide_item = MenuItem::with_id(app, "hide", "隐藏宠物", true, None::<&str>)?;
     let refresh_item = MenuItem::with_id(app, "refresh", "刷新数据", true, None::<&str>)?;
+    let todo_item = MenuItem::with_id(app, "todo", "工作日志", true, None::<&str>)?;
     let settings_item = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
 
@@ -29,6 +30,7 @@ pub fn create_system_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Err
         &show_item,
         &hide_item,
         &refresh_item,
+        &todo_item,
         &separator2,
         &settings_item,
         &quit_item,
@@ -97,6 +99,7 @@ pub fn refresh_tray_menu(app: &AppHandle) -> Result<(), Box<dyn std::error::Erro
     let show_item = MenuItem::with_id(app, "show", "显示宠物", true, None::<&str>)?;
     let hide_item = MenuItem::with_id(app, "hide", "隐藏宠物", true, None::<&str>)?;
     let refresh_item = MenuItem::with_id(app, "refresh", "刷新数据", true, None::<&str>)?;
+    let todo_item = MenuItem::with_id(app, "todo", "工作日志", true, None::<&str>)?;
     let settings_item = MenuItem::with_id(app, "settings", "设置", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
 
@@ -107,6 +110,7 @@ pub fn refresh_tray_menu(app: &AppHandle) -> Result<(), Box<dyn std::error::Erro
         &show_item,
         &hide_item,
         &refresh_item,
+        &todo_item,
         &separator2,
         &settings_item,
         &quit_item,
@@ -144,6 +148,13 @@ pub fn setup_tray_menu_handler(app: &AppHandle) {
                 tauri::async_runtime::spawn(async move {
                     crate::polling::emit_usage(&app_handle).await;
                 });
+            }
+            "todo" => {
+                // 打开工作日志面板
+                if let Some(window) = app.get_webview_window("todo-panel") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
             }
             "settings" => {
                 // 打开设置窗口

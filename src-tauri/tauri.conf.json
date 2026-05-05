@@ -61,6 +61,21 @@
         "url": "../windows/settings.html",
         "backgroundColor": "#12141c",
         "shadow": true
+      },
+      {
+        "label": "todo-panel",
+        "title": "工作日志",
+        "width": 320,
+        "height": 480,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "resizable": false,
+        "visible": false,
+        "skipTaskbar": true,
+        "url": "../windows/todo-panel.html",
+        "backgroundColor": "#00000000",
+        "shadow": false
       }
     ],
     "withGlobalTauri": true,

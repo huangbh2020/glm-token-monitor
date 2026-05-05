@@ -11,6 +11,9 @@ import LottieDog from './pets/LottieDog.vue'
 import LottieFixing from './pets/LottieFixing.vue'
 import LiquidTank from './LiquidTank.vue'
 import { getStatusColor } from '../utils/statusColor'
+import TodoBadge from './todo/TodoBadge.vue'
+import QuickCapture from './QuickCapture.vue'
+import { useTodo } from '../composables/useTodo'
 import { useModelUsage } from '../composables/useModelUsage'
 import UsageAreaChart from './UsageAreaChart.vue'
 import UsageDailyBarChart from './UsageDailyBarChart.vue'
@@ -33,6 +36,9 @@ const { petType, currentAction, setPetType } = usePetAction()
 
 // 模型用量数据
 const { modelUsageData, isLoading: isModelLoading, error: modelError, activeTab, fetchModelUsage } = useModelUsage()
+
+// Todo 功能
+const { pendingCount } = useTodo()
 const isExpanded = ref(false)
 const expandedPanelRef = ref<HTMLElement | null>(null)
 
@@ -215,11 +221,16 @@ async function openSettings() {
   }
 }
 
-// 双击处理 - 阻止全屏
-const handleDblClick = (event: MouseEvent) => {
-  console.log('[DblClick] Preventing default behavior')
+// 双击处理 - 打开工作日志面板
+const handleDblClick = async (event: MouseEvent) => {
   event.preventDefault()
   event.stopPropagation()
+  try {
+    const { invoke } = await import('@tauri-apps/api/core')
+    await invoke('open_todo_panel')
+  } catch (err) {
+    console.error('Open todo panel failed:', err)
+  }
 }
 
 // 静默刷新数据（不显示加载提示）
@@ -441,8 +452,11 @@ onUnmounted(() => {
       @mouseenter="onPetMouseEnter">
       <LottieDog v-if="petType === 'lottie-dog'" :state="petState" :width="110" :height="90" />
       <LottieFixing v-else-if="petType === 'fixing'" :state="petState" :width="110" :height="80" />
-
+      <TodoBadge :count="pendingCount" />
     </div>
+
+    <!-- 快速录入浮窗 -->
+    <QuickCapture />
 
     <!-- 底座展示模式：液面能量槽 -->
     <transition name="pedestal-fade">
