@@ -53,7 +53,7 @@ function formatTime(timestamp: number | null): string {
 }
 
 .todo-item.done .item-text {
-  color: #8b8b8b;
+  color: #555555;
   text-decoration: line-through;
 }
 
@@ -61,7 +61,7 @@ function formatTime(timestamp: number | null): string {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border: 1.5px solid #000000;
   background: transparent;
   display: flex;
   align-items: center;
@@ -73,7 +73,7 @@ function formatTime(timestamp: number | null): string {
 }
 
 .checkbox:hover {
-  border-color: rgba(255, 255, 255, 0.4);
+  border-color: #333333;
 }
 
 .checkbox.checked {
@@ -85,14 +85,14 @@ function formatTime(timestamp: number | null): string {
 .item-text {
   flex: 1;
   font-size: 13px;
-  color: #ffffff;
+  color: #000000;
   line-height: 1.5;
   word-break: break-word;
 }
 
 .item-time {
   font-size: 10px;
-  color: #888888;
+  color: #555555;
   flex-shrink: 0;
 }
 

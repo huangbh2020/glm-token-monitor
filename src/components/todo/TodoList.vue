@@ -93,10 +93,10 @@ function handleKeydown(e: KeyboardEvent) {
 .todo-input {
   width: 100%;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #000000;
   border-radius: 8px;
-  color: #ffffff;
+  color: #000000;
   font-size: 12px;
   line-height: 1.5;
   outline: none;
@@ -108,11 +108,11 @@ function handleKeydown(e: KeyboardEvent) {
 
 .todo-input:focus {
   border-color: #3b82f6;
-  background: rgba(255, 255, 255, 0.1);
+  background: #ffffff;
 }
 
 .todo-input::placeholder {
-  color: #888888;
+  color: #666666;
 }
 
 .list-enter-active,
