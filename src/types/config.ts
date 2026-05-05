@@ -23,13 +23,7 @@ export interface PollingConfig {
 }
 
 // 宠物类型
-export type PetType = 'spirit' | 'ghost' | 'polar' | 'cat' | 'dog' | 'lottie-dog' | 'procrastination' | 'lottie-cat' | 'octoyaki' | 'fixing' | 'bicycle'
-
-// 猫咪动作（已废弃，保留以兼容）
-export type CatAction = 'cat-sleep' | 'cat-play' | 'cat-stare' | 'cat-stretch'
-
-// 狗狗动作（已废弃，保留以兼容）
-export type DogAction = 'dog-sit' | 'dog-bark' | 'dog-walk' | 'dog-beg'
+export type PetType = 'lottie-dog' | 'fixing'
 
 // 宠物配置
 export interface PetConfig {

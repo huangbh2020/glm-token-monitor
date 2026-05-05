@@ -63,6 +63,12 @@ async function closeWindow() {
   }
 }
 
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    closeWindow()
+  }
+}
+
 // 打开设置窗口
 async function openSettings() {
   try {
@@ -81,11 +87,13 @@ onMounted(async () => {
     console.error('Setup event listener failed:', err)
   })
   ;(window as any).__infoPanelRefresh = refreshUsageData
+  window.addEventListener('keydown', handleKeydown)
 })
 
 onUnmounted(() => {
   cleanup?.()
   delete (window as any).__infoPanelRefresh
+  window.removeEventListener('keydown', handleKeydown)
 })
 </script>
 

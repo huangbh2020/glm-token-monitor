@@ -38,7 +38,7 @@ pub struct PetConfig {
 impl Default for PetConfig {
     fn default() -> Self {
         Self {
-            selected_pet: "cat".to_string(),
+            selected_pet: "fixing".to_string(),
             action_interval: 25,
         }
     }

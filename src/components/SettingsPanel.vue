@@ -387,10 +387,7 @@ onUnmounted(() => {
               v-for="pet in [
                 { value: 'dog', label: '像素小狗', desc: 'Sprite Dog' },
                 { value: 'lottie-dog', label: '打字小狗', desc: 'Typing Dog' },
-                { value: 'procrastination', label: '拖延症', desc: 'Procrastination' },
-                { value: 'octoyaki', label: '章鱼烧', desc: 'Octoyaki Juggle' },
-                { value: 'fixing', label: '修 Bug', desc: 'Fixing' },
-                { value: 'bicycle', label: '骑单车', desc: 'Bicycle' }
+                { value: 'fixing', label: '修 Bug', desc: 'Fixing' }
               ]"
               :key="pet.value"
               class="pet-option"

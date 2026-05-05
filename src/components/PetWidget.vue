@@ -7,21 +7,8 @@ import { useSettings } from '../composables/useSettings'
 import { usePetAction } from '../composables/usePetAction'
 import { useTheme } from '../composables/useTheme'
 import type { PetType } from '../types/config'
-import CatGifViewer from './pets/CatGifViewer.vue'
-import DogSit from './pets/DogSit.vue'
-import DogBark from './pets/DogBark.vue'
-import DogWalk from './pets/DogWalk.vue'
-import DogBeg from './pets/DogBeg.vue'
-import SpriteDog from './pets/SpriteDog.vue'
-import JellySpirit from './pets/JellySpirit.vue'
-import PixelGhost from './pets/PixelGhost.vue'
-import PolarBear from './pets/PolarBear.vue'
 import LottieDog from './pets/LottieDog.vue'
-import LottieProcrastination from './pets/LottieProcrastination.vue'
-import LottieCat from './pets/LottieCat.vue'
-import LottieOctoyaki from './pets/LottieOctoyaki.vue'
 import LottieFixing from './pets/LottieFixing.vue'
-import LottieBicycle from './pets/LottieBicycle.vue'
 import LiquidTank from './LiquidTank.vue'
 import { getStatusColor } from '../utils/statusColor'
 import { useModelUsage } from '../composables/useModelUsage'
@@ -36,7 +23,7 @@ const { currentTheme } = useTheme()
 
 // 计算是否显示光晕层
 const showGlowEffect = computed(() => basicConfig.value?.enable_glow ?? true)
-const { usagePercent, petState, gradientColor, gradientStrokeColor } = useUsageState(
+const { petState } = useUsageState(
   computed(() => usageData.value.used),
   computed(() => usageData.value.total)
 )
@@ -86,40 +73,18 @@ watch(petType, (val) => {
   console.log(`[PetWidget] petType changed to: ${val}`)
 }, { immediate: true })
 
-// 宠物组件映射
-const petComponents = {
-  'dog-sit': DogSit,
-  'dog-bark': DogBark,
-  'dog-walk': DogWalk,
-  'dog-beg': DogBeg
-} as const
-
 // 根据宠物类型计算窗口尺寸（仅显示宠物时，窗口精确贴合宠物）
-const petPadding = 4 // 宠物周围留 4px 缓冲
+const petPadding = 4
 const petWindowSize = computed(() => {
   const sizes: Record<string, { w: number; h: number }> = {
-    'spirit': { w: 80, h: 80 },
-    'ghost': { w: 80, h: 80 },
-    'polar': { w: 96, h: 96 },
     'lottie-dog': { w: 100, h: 110 },
-    'procrastination': { w: 110, h: 110 },
-    'lottie-cat': { w: 110, h: 110 },
-    'octoyaki': { w: 110, h: 110 },
     'fixing': { w: 110, h: 60 },
-    'bicycle': { w: 110, h: 110 },
-  }
-  // 猫咪和狗狗系列
-  if (currentAction.value.startsWith('cat-')) {
-    return { w: 80 + petPadding * 2, h: 80 + petPadding * 2 }
-  }
-  if (currentAction.value.startsWith('dog-')) {
-    return { w: 80 + petPadding * 2, h: 80 + petPadding * 2 }
   }
   const size = sizes[petType.value]
   if (size) {
     return { w: size.w + petPadding * 2, h: size.h + petPadding * 2 }
   }
-  return { w: 88, h: 88 } // fallback: 80 + 4*2
+  return { w: 88, h: 88 }
 })
 
 // 双指标数据
@@ -230,6 +195,13 @@ const handleClick = async (event: MouseEvent) => {
 // 关闭信息面板
 function closeInfoPanel() {
   showInfoPanel.value = false
+  isExpanded.value = false
+}
+
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && (showInfoPanel.value || isExpanded.value)) {
+    closeInfoPanel()
+  }
 }
 
 // 打开设置窗口
@@ -414,6 +386,7 @@ function setupDataRefreshTimer() {
 onMounted(async () => {
   // 【重要修复】：把启动定时器放到最顶部！防止由于 Tauri 或其他 await 函数执行超时阻塞定时器注册。
   setupDataRefreshTimer()
+  window.addEventListener('keydown', handleKeydown)
 
   try {
     await setupEventListener()
@@ -454,6 +427,7 @@ onUnmounted(() => {
   if (dataRefreshTimer) clearInterval(dataRefreshTimer)
   if (countdownTimer) clearInterval(countdownTimer)
   if (clickThroughTimer) clearInterval(clickThroughTimer)
+  window.removeEventListener('keydown', handleKeydown)
 })
 </script>
 
@@ -465,18 +439,8 @@ onUnmounted(() => {
     <!-- 宠物 -->
     <div class="pet-container" data-tauri-drag-region :class="{ hidden: showInfoPanel && hasApiKey }"
       @mouseenter="onPetMouseEnter">
-      <JellySpirit v-if="petType === 'spirit'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="80" :height="80" />
-      <PixelGhost v-else-if="petType === 'ghost'" :color="gradientColor" :stroke-color="gradientStrokeColor" :state="petState" :width="80" :height="80" />
-      <PolarBear v-else-if="petType === 'polar'" :state="petState" :width="96" :height="96" />
-      <LottieDog v-else-if="petType === 'lottie-dog'" :state="petState" :width="110" :height="90" />
-      <LottieProcrastination v-else-if="petType === 'procrastination'" :state="petState" :width="110" :height="110" />
-      <LottieCat v-else-if="petType === 'lottie-cat'" :state="petState" :width="110" :height="110" />
-      <LottieOctoyaki v-else-if="petType === 'octoyaki'" :state="petState" :width="110" :height="110" />
+      <LottieDog v-if="petType === 'lottie-dog'" :state="petState" :width="110" :height="90" />
       <LottieFixing v-else-if="petType === 'fixing'" :state="petState" :width="110" :height="80" />
-      <LottieBicycle v-else-if="petType === 'bicycle'" :state="petState" :width="110" :height="110" />
-      <CatGifViewer v-else-if="currentAction.startsWith('cat-')" :action="currentAction" :width="80" :height="80" />
-      <SpriteDog v-else-if="currentAction.startsWith('dog-')" :action="currentAction" :width="80" :height="80" :fps="10" />
-      <component v-else :is="petComponents[currentAction as keyof typeof petComponents]" :key="currentAction" />
 
     </div>
 
