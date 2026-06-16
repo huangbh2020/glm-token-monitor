@@ -142,6 +142,8 @@ function updateCountdown() {
 // 悬浮与拖拽相关状态
 const isDragging = ref(false)
 const showInfoPanel = ref(false)
+const petContainerRef = ref<HTMLElement | null>(null)
+const apiConfigBubbleRef = ref<HTMLElement | null>(null)
 
 // 拖动和点击处理
 let dragStartTime = 0
@@ -262,6 +264,26 @@ let countdownTimer: number | null = null
 let clickThroughTimer: number | null = null
 let isCurrentlyIgnoring = false
 
+function isCursorOverElement(
+  cursor: { x: number; y: number },
+  windowPosition: { x: number; y: number },
+  element: HTMLElement | null,
+  margin: number
+) {
+  if (!element) return false
+
+  const rect = element.getBoundingClientRect()
+  if (rect.width <= 0 || rect.height <= 0) return false
+
+  const scale = window.devicePixelRatio || 1
+  const left = windowPosition.x + rect.left * scale - margin
+  const top = windowPosition.y + rect.top * scale - margin
+  const right = windowPosition.x + rect.right * scale + margin
+  const bottom = windowPosition.y + rect.bottom * scale + margin
+
+  return cursor.x >= left && cursor.x <= right && cursor.y >= top && cursor.y <= bottom
+}
+
 // 鼠标进入宠物区域时立即关闭穿透（不等轮询）
 async function onPetMouseEnter() {
   if (isCurrentlyIgnoring) {
@@ -291,17 +313,17 @@ async function updateClickThrough() {
     const { Window } = await import('@tauri-apps/api/window')
     const win = Window.getCurrent()
 
-    const [cursor, pos, size] = await Promise.all([
+    const [cursor, pos] = await Promise.all([
       invoke<{ x: number; y: number }>('get_cursor_position'),
       win.outerPosition(),
-      win.outerSize(),
     ])
 
     const margin = 8
-    const overWindow = cursor.x >= pos.x - margin && cursor.x <= pos.x + size.width + margin
-      && cursor.y >= pos.y - margin && cursor.y <= pos.y + size.height + margin
+    const overInteractiveArea =
+      isCursorOverElement(cursor, pos, petContainerRef.value, margin) ||
+      isCursorOverElement(cursor, pos, apiConfigBubbleRef.value, margin)
 
-    const shouldIgnore = !overWindow
+    const shouldIgnore = !overInteractiveArea
 
     if (shouldIgnore !== isCurrentlyIgnoring) {
       await win.setIgnoreCursorEvents(shouldIgnore)
@@ -448,7 +470,7 @@ onUnmounted(() => {
     @click="handleClick"
     @dblclick.prevent="handleDblClick">
     <!-- 宠物 -->
-    <div class="pet-container" data-tauri-drag-region :class="{ hidden: showInfoPanel && hasApiKey }"
+    <div ref="petContainerRef" class="pet-container" data-tauri-drag-region :class="{ hidden: showInfoPanel && hasApiKey }"
       @mouseenter="onPetMouseEnter">
       <LottieDog v-if="petType === 'lottie-dog'" :state="petState" :width="110" :height="90" />
       <LottieFixing v-else-if="petType === 'fixing'" :state="petState" :width="110" :height="80" />
@@ -470,7 +492,7 @@ onUnmounted(() => {
 
     <!-- API 配置提示气泡（未配置时显示） -->
     <transition name="bubble-fade">
-      <div v-if="!hasApiKey" class="api-config-bubble"
+      <div v-if="!hasApiKey" ref="apiConfigBubbleRef" class="api-config-bubble"
         @mousedown.stop
         @click.stop="openSettings"
         @dblclick.stop>
